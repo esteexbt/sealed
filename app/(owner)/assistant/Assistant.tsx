@@ -57,7 +57,7 @@ export function Assistant({ initial, modelLabel, paypalMode }: { initial: string
       <header className="chat-head">
         <h1>Ask about your money.</h1>
         <p className="muted small">
-          {modelLabel} with your Sealed projects and the PayPal Agent Toolkit{paypalMode === "sandbox" ? " (sandbox)" : " (simulated)"}. It asks before sending or refunding anything.
+          {modelLabel} with your Sealed AI projects and the PayPal Agent Toolkit{paypalMode === "sandbox" ? " (sandbox)" : " (simulated)"}. It asks before sending or refunding anything.
         </p>
       </header>
 
@@ -75,7 +75,7 @@ export function Assistant({ initial, modelLabel, paypalMode }: { initial: string
               <ul className="steps" aria-label="Tools used">
                 {m.steps.map((s, j) => (
                   <li key={j} className={`step step-${s.source}`}>
-                    <span className="step-src">{s.source === "paypal" ? "PayPal" : "Sealed"}</span>
+                    <span className="step-src">{s.source === "paypal" ? "PayPal" : "Sealed AI"}</span>
                     <code>{s.tool}</code>
                     <span className="muted">{s.summary}</span>
                   </li>

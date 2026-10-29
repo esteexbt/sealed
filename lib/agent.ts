@@ -21,8 +21,8 @@ export interface AgentReply {
   pending?: { kind: "remind" | "refund"; projectId: string; milestoneId: string; message?: string } | null;
 }
 
-const SYSTEM = () => `You are Sealed's money assistant for ${config.freelancerName}, an independent freelancer.
-You can see their projects, milestones and payments in Sealed, and act on their PayPal ${paypalMode === "sandbox" ? "sandbox " : ""}account.
+const SYSTEM = () => `You are Sealed AI's money assistant for ${config.freelancerName}, an independent freelancer.
+You can see their projects, milestones and payments in Sealed AI, and act on their PayPal ${paypalMode === "sandbox" ? "sandbox " : ""}account.
 Today is ${new Date().toISOString().slice(0, 10)}.
 
 How you work:
@@ -65,7 +65,7 @@ function sealedTools() {
       parameters: z.object({
         projectId: z.string(),
         milestoneId: z.string(),
-        message: z.string().optional().describe("Custom message. Omit to let Sealed draft one."),
+        message: z.string().optional().describe("Custom message. Omit to let Sealed AI draft one."),
         confirmed: z.boolean().describe("true only after the user approved the preview"),
       }),
       execute: async ({ projectId, milestoneId, message, confirmed }) => {

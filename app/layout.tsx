@@ -4,7 +4,7 @@ import "@fontsource-variable/public-sans";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Sealed",
+  title: "Sealed AI",
   description: "Your work stays sealed until you're paid. AI scoping and PayPal payments for freelancers.",
 };
 

@@ -91,7 +91,7 @@ export async function createOrder(input: OrderInput): Promise<{ id: string }> {
       payment_source: {
         paypal: {
           experience_context: {
-            brand_name: "Sealed",
+            brand_name: "Sealed AI",
             user_action: "PAY_NOW",
             shipping_preference: "NO_SHIPPING",
           },

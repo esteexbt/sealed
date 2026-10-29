@@ -54,7 +54,7 @@ export function NewProject({ modelLabel }: { modelLabel: string }) {
     <div className="new">
       <section className="new-brief">
         <h1>What did the client send you?</h1>
-        <p className="muted">Paste the DM, email or call notes as they are. Sealed turns them into paid milestones.</p>
+        <p className="muted">Paste the DM, email or call notes as they are. Sealed AI turns them into paid milestones.</p>
         <div className="field">
           <label htmlFor="brief">Client brief</label>
           <textarea id="brief" className="textarea" value={brief} onChange={(e) => setBrief(e.target.value)} placeholder="Paste the message here" />

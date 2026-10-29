@@ -25,7 +25,7 @@ export default function Login() {
         }}
       >
         <Seal size={52} />
-        <h1>Sign in to Sealed</h1>
+        <h1>Sign in to Sealed AI</h1>
         <div className="field">
           <label htmlFor="pw">Password</label>
           <input id="pw" className="input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoFocus />

@@ -14,7 +14,7 @@ export default async function OwnerLayout({ children }: { children: React.ReactN
       <header className="topbar">
         <Link href="/" className="wordmark">
           <Seal size={30} />
-          Sealed
+          Sealed AI
         </Link>
         <Nav />
         <span className="mode-pill" title="Payment and AI mode">
