@@ -38,9 +38,11 @@ async function art(name, svg) {
   const previewKey = `${fid}-preview.jpg`;
   const png = await sharp(Buffer.from(svg)).png().toBuffer();
   fs.writeFileSync(path.join(FILES, originalKey), png);
+  const meta = await sharp(png).metadata();
+  const sha256 = crypto.createHash("sha256").update(png).digest("hex");
   const { data, info } = await sharp(png).resize({ width: 1100, fit: "inside" }).blur(9).toBuffer({ resolveWithObject: true });
   await sharp(data).composite([{ input: watermark(info.width, info.height) }]).jpeg({ quality: 62 }).toFile(path.join(FILES, previewKey));
-  return { id: fid, name, mime: "image/png", size: png.length, originalKey, previewKey, uploadedAt: ago(3) };
+  return { id: fid, name, mime: "image/png", size: png.length, originalKey, previewKey, uploadedAt: ago(3), sha256, width: meta.width, height: meta.height, removedAt: null };
 }
 
 // Three distinct logo routes for a coffee shop, drawn as vector art.

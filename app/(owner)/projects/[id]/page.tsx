@@ -1,17 +1,22 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getProject, isOverdue, outstanding } from "@/lib/db";
-import { money, portalUrl } from "@/lib/actions";
-import { formatBytes } from "@/lib/format";
-import { CopyLink, RemindButton, UploadFiles } from "@/components/ProjectControls";
+import { currentFiles, getProject, held, isOverdue, outstanding } from "@/lib/db";
+import { money, portalUrl, settleDue } from "@/lib/actions";
+import { isStale, refreshInBackground } from "@/lib/check";
+import { formatBytes, statusLabel, when } from "@/lib/format";
+import { CheckCard } from "@/components/CheckCard";
+import { CopyLink, MilestoneAction, RemindButton, RemoveFile, UploadFiles } from "@/components/ProjectControls";
 
 const date = (d: string) => new Date(d + (d.length === 10 ? "T12:00:00Z" : "")).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+const EDITABLE = new Set(["draft", "awaiting_payment", "changes_requested"]);
 
 export default async function ProjectPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  await settleDue();
   const p = getProject(id);
   if (!p) notFound();
   const left = outstanding(p);
+  const holding = held(p);
   const total = p.milestones.reduce((a, m) => a + m.amount, 0);
   const url = portalUrl(p);
 
@@ -22,7 +27,9 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
         <h1>{p.title}</h1>
         <p className="muted">
           For {p.clientName}
-          {p.clientEmail ? ` (${p.clientEmail})` : ""}. {money(total, p.currency)} in total, {left > 0 ? `${money(left, p.currency)} still to collect.` : "fully paid."}
+          {p.clientEmail ? ` (${p.clientEmail})` : ""}. {money(total, p.currency)} in total
+          {holding > 0 ? `, ${money(holding, p.currency)} held by PayPal while they review` : ""}
+          {left > 0 ? `, ${money(left, p.currency)} still to collect.` : holding > 0 ? "." : ", fully paid."}
         </p>
         <div className="row">
           <CopyLink url={url} />
@@ -33,10 +40,16 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
       <ol className="ms-list">
         {p.milestones.map((m, i) => {
           const late = isOverdue(m);
+          const files = currentFiles(m);
+          const editable = EDITABLE.has(m.status);
+          const stale = isStale(m);
+          if (stale) refreshInBackground(p.id, m);
+          const openReq = (m.changeRequests || []).filter((c) => !c.resolvedAt).at(-1);
+          const views = m.views || [];
+          const inspections = views.reduce((a, v) => a + v.inspections, 0);
           const statusClass = late ? "overdue" : m.status;
-          const statusText = late ? "Overdue" : { awaiting_payment: "Awaiting payment", paid: "Paid", refunded: "Refunded", draft: "Draft" }[m.status];
           return (
-            <li key={m.id} className="ms sheet">
+            <li key={m.id} className={`ms sheet ms-${m.status}`}>
               <div className="ms-top">
                 <span className="ms-n" aria-hidden>{i + 1}</span>
                 <div className="ms-title">
@@ -45,14 +58,31 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
                 </div>
                 <div className="ms-money">
                   <span className="amount">{money(m.amount, p.currency)}</span>
-                  <span className={`status status-${statusClass}`}>{statusText}</span>
+                  <span className={`status status-${statusClass}`}>{statusLabel(m.status, late)}</span>
                   <span className="tiny muted">Due {date(m.dueDate)}</span>
                 </div>
               </div>
 
-              {m.files.length > 0 ? (
+              {m.status === "in_review" && m.payment && (
+                <p className="ms-note ms-note-held">
+                  {p.clientName} paid {money(m.amount, p.currency)} into a PayPal hold. Files are locked while they review.
+                  {m.payment.reviewEndsAt && ` It releases to you automatically on ${when(m.payment.reviewEndsAt)} if they don’t respond.`}
+                  {m.payment.releaseError && <span className="error"> Automatic release failed: {m.payment.releaseError}</span>}
+                </p>
+              )}
+              {m.status === "changes_requested" && openReq && (
+                <div className="ms-note ms-note-changes">
+                  <p>
+                    <strong>{p.clientName} asked for changes</strong> on {when(openReq.at)}. Their payment stays held. Send a revision by {m.reviseBy ? when(m.reviseBy) : "the deadline"}, or they can cancel and the hold goes back to them.
+                  </p>
+                  <blockquote>{openReq.note}</blockquote>
+                </div>
+              )}
+              {m.status === "cancelled" && <p className="ms-note">Cancelled. The client’s PayPal hold was released back to them.</p>}
+
+              {files.length > 0 ? (
                 <ul className="files">
-                  {m.files.map((f) => (
+                  {files.map((f) => (
                     <li key={f.id} className="file">
                       {f.previewKey ? (
                         // eslint-disable-next-line @next/next/no-img-element
@@ -61,27 +91,63 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
                         <span className="file-thumb file-generic">{f.name.split(".").pop()?.toUpperCase()}</span>
                       )}
                       <span className="file-meta">
-                        <span className="file-name">{f.name}</span>
-                        <span className="tiny muted">{formatBytes(f.size)}</span>
+                        <span className="file-name" title={f.name}>{f.name}</span>
+                        <span className="tiny muted">
+                          {f.width ? `${f.width}×${f.height}, ` : ""}
+                          {formatBytes(f.size)}
+                        </span>
+                        {f.sha256 && <span className="tiny muted" title={`SHA-256 ${f.sha256}`}>Fingerprint {f.sha256.slice(0, 10)}</span>}
                       </span>
+                      {editable && <RemoveFile projectId={p.id} milestoneId={m.id} fileId={f.id} name={f.name} />}
                     </li>
                   ))}
                 </ul>
               ) : (
-                <p className="small muted ms-empty">No files yet. Add the deliverables and the client sees them sealed until they pay.</p>
+                <p className="small muted ms-empty">No files yet. Add the deliverables: your client sees them sealed, with an AI check against what you agreed, before they pay.</p>
+              )}
+
+              {files.length > 0 && m.status !== "paid" && m.status !== "cancelled" && m.status !== "refunded" && (
+                <div className="ms-check">
+                  <CheckCard check={stale ? null : m.check} pending={stale} audience="freelancer" />
+                </div>
+              )}
+
+              {views.length > 0 && (
+                <p className="tiny muted ms-views">
+                  {p.clientName} opened review copies {views.length} time{views.length === 1 ? "" : "s"}
+                  {inspections ? ` and inspected ${inspections} close-up${inspections === 1 ? "" : "s"}` : ""}. Last: {views.at(-1)!.fileName}, {when(views.at(-1)!.at)}.
+                </p>
               )}
 
               <div className="ms-actions">
-                {m.status !== "paid" && <UploadFiles projectId={p.id} milestoneId={m.id} />}
+                {editable && <UploadFiles projectId={p.id} milestoneId={m.id} />}
+                {m.status === "changes_requested" && (
+                  <MilestoneAction projectId={p.id} milestoneId={m.id} action="revision" label="Send revision for review" busyLabel="Sending…" tone="ink" />
+                )}
                 {m.status === "awaiting_payment" && <RemindButton projectId={p.id} milestoneId={m.id} hasEmail={Boolean(p.clientEmail)} />}
+                {(m.status === "in_review" || m.status === "changes_requested") && (
+                  <MilestoneAction
+                    projectId={p.id}
+                    milestoneId={m.id}
+                    action="cancel"
+                    label="Cancel and release their hold"
+                    busyLabel="Releasing…"
+                    tone="quiet"
+                    confirm={`Cancel ${m.title}? ${p.clientName}'s ${money(m.amount, p.currency)} hold goes back to them and you won't be paid for this stage.`}
+                  />
+                )}
+                {files.length > 0 && editable && !stale && (
+                  <MilestoneAction projectId={p.id} milestoneId={m.id} action="check" label="Check again" busyLabel="Checking…" tone="quiet" />
+                )}
                 {m.status === "paid" && m.payment && (
                   <span className="paid-line small">
                     <span className="seal-open" aria-hidden />
-                    Paid {m.payment.capturedAt ? date(m.payment.capturedAt.slice(0, 10)) : ""} via PayPal
+                    {m.payment.releasedBy === "auto" ? "Released automatically" : m.payment.authorizationId ? "Approved and released" : "Paid"}{" "}
+                    {m.payment.capturedAt ? date(m.payment.capturedAt.slice(0, 10)) : ""} via PayPal
                     <span className="tiny muted">capture {m.payment.captureId}</span>
                   </span>
                 )}
-                {m.reminders.length > 0 && (
+                {m.reminders.length > 0 && m.status === "awaiting_payment" && (
                   <span className="tiny muted">
                     {m.reminders.length} reminder{m.reminders.length === 1 ? "" : "s"} sent, last {date(m.reminders.at(-1)!.sentAt.slice(0, 10))}
                   </span>

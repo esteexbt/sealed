@@ -57,6 +57,7 @@ const FILTERS = [
   { key: "all", label: "All" },
   { key: "overdue", label: "Overdue" },
   { key: "unpaid", label: "Unpaid" },
+  { key: "held", label: "Held" },
   { key: "paid", label: "Paid" },
 ] as const;
 type FilterKey = (typeof FILTERS)[number]["key"];
@@ -65,8 +66,12 @@ const STATUS_CLASS: Record<string, string> = {
   Paid: "status-paid",
   "Awaiting payment": "status-awaiting_payment",
   Overdue: "status-overdue",
+  "Held, in review": "status-in_review",
+  "Changes requested": "status-changes_requested",
   Refunded: "status-refunded",
+  Cancelled: "status-cancelled",
 };
+const isHeld = (r?: Row) => r?.status === "Held, in review" || r?.status === "Changes requested";
 
 const isOpen = (r?: Row) => r?.status === "Awaiting payment" || r?.status === "Overdue";
 const today = () => new Date().toISOString().slice(0, 10);
@@ -100,12 +105,14 @@ export function LedgerGrid({ rows }: { rows: LedgerRow[] }) {
     if (!g) return;
     let collected = 0;
     let open = 0;
+    let hold = 0;
     let count = 0;
     g.forEachNodeAfterFilter((n) => {
       if (!n.data) return;
       count++;
       if (n.data.status === "Paid") collected += n.data.amount;
       if (isOpen(n.data)) open += n.data.amount;
+      if (isHeld(n.data)) hold += n.data.amount;
     });
     setTotals([
       {
@@ -116,9 +123,9 @@ export function LedgerGrid({ rows }: { rows: LedgerRow[] }) {
         clientEmail: "",
         project: "",
         milestone: "",
-        amount: collected + open,
+        amount: collected + open + hold,
         currency,
-        status: `${fmt(collected)} paid, ${fmt(open)} open`,
+        status: `${fmt(collected)} paid${hold ? `, ${fmt(hold)} held` : ""}, ${fmt(open)} open`,
         due: "",
         paidOn: "",
         captureId: "",
@@ -165,7 +172,7 @@ export function LedgerGrid({ rows }: { rows: LedgerRow[] }) {
       },
       {
         field: "status",
-        width: 156,
+        width: 172,
         filter: true,
         cellStyle: { display: "flex", alignItems: "center" },
         cellRenderer: (p: ICellRendererParams<Row, string>) =>
@@ -319,7 +326,7 @@ export function LedgerGrid({ rows }: { rows: LedgerRow[] }) {
           doesExternalFilterPass={(n) => {
             const s = n.data?.status;
             const f = filterRef.current;
-            return f === "overdue" ? s === "Overdue" : f === "unpaid" ? isOpen(n.data) : f === "paid" ? s === "Paid" : true;
+            return f === "overdue" ? s === "Overdue" : f === "unpaid" ? isOpen(n.data) : f === "held" ? isHeld(n.data) : f === "paid" ? s === "Paid" : true;
           }}
           onGridReady={(e) => {
             api.current = e.api;

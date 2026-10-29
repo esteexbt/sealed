@@ -13,17 +13,46 @@ Freelancers routinely deliver work and then wait weeks to get paid, or never get
 ## How Sealed AI works
 
 1. **Brief to plan (AI).** Paste a DM, email or call notes. The scoping agent splits the work into 2–5 milestones, each ending in something the client can see. It prices them (fitting a stated budget), dates them against the client's deadline, and lists the questions worth asking first. Every field stays editable.
-2. **Sealed deliverables.** Upload files to a milestone. Images get a blurred, watermarked preview generated on the server. The client portal shows only previews, behind a wax seal.
-3. **Pay to unlock (PayPal).** The client pays a milestone through PayPal Checkout. Sealed AI captures the order on the server and unlocks the originals only after PayPal confirms a `COMPLETED` capture for exactly that milestone, amount and currency. The seal cracks open and the downloads appear.
-4. **The assistant chases payments (AI + PayPal Agent Toolkit).** Ask "who owes me money?" or "remind whoever is most overdue". The assistant reads your receivables, drafts a reminder in a tone that gets firmer with each one sent, shows it to you, and only after you approve sends it as a PayPal invoice that links back to the portal. It can also look up invoices, orders and transactions in PayPal, and refund a milestone (which seals its files again).
-5. **Ledger (AG Grid).** Every milestone across every client, reconciled against PayPal capture IDs. Unpaid prices, titles and due dates are edited in the grid and saved to the server; the client portal updates immediately, and a checkout opened at the old price can no longer be captured. Paid milestones are locked. Quick filters (Overdue, Unpaid, Paid), a live totals row that follows every filter, a days-late column, one-click PayPal reminders per row, and CSV export for accounting.
+2. **Deliver and get checked (AI).** The freelancer uploads each stage's files. Each file is fingerprinted (SHA-256) and measured. A delivery check compares the files against the agreed deliverables: rules prove the facts (counts, formats, sizes, duplicates), and Gemini looks at the images to judge whether they match and look finished. Both sides see the same check before any money moves.
+3. **Pay into a PayPal hold.** The client sees sealed previews and the check, then pays with PayPal Checkout using `intent: AUTHORIZE`. PayPal reserves the money on the client's account; it is not sent to the freelancer yet. Sealed AI verifies the authorization (status, `custom_id`, amount, currency) on the server before anything changes.
+4. **Review the full work, protected.** While the money is held, the client opens a protected review copy of each image and can inspect any spot at full original resolution. The original file never leaves the server.
+5. **Approve, or ask for changes.**
+   - **Approve** captures the authorization: the freelancer is paid, the seal cracks, and the originals unlock for download.
+   - **Request changes** keeps the money held and locks in a 3-day revision deadline. The freelancer uploads a revision, which is checked again and opens a fresh review window.
+   - **No response for 3 days** releases payment automatically, so a silent client can't stall a freelancer.
+   - **Missed revision deadline**: the client can cancel, and the authorization is voided, so they were never charged.
+6. **The assistant chases payments (AI + PayPal Agent Toolkit).** Ask "who owes me money?" or "remind whoever is most overdue". The assistant reads receivables and holds, drafts a reminder whose tone firms up with each one sent, shows it to you, and only after you approve sends it as a PayPal invoice linking back to the portal.
+7. **Ledger (AG Grid).** Every milestone across every client, reconciled against PayPal capture IDs: paid, held, open. Unpaid prices, titles and due dates are edited in the grid and saved to the server. Quick filters (Overdue, Unpaid, Held, Paid), a live totals row that follows every filter, a days-late column, one-click reminders per row, and CSV export.
+
+## Why both sides can trust it
+
+| Fear | What Sealed AI does |
+|---|---|
+| Client: "I'll pay and get junk." | The AI check flags missing or weak deliverables before payment. Payment is only held, and the client reviews the full work before releasing it. Unfinished work gets a change request, and if it's never fixed the hold is voided. |
+| Freelancer: "They'll take the work and not pay." | The money is reserved by PayPal before the client sees the full work. The client only ever sees a watermarked review copy; originals unlock on capture. Silence releases payment after 3 days. |
+| Either: "That's not what was delivered." | Every file is fingerprinted at upload and locked during review. Change requests, views and close-up inspections are logged with times. |
+
+## How the review copy is protected
+
+What is guaranteed: **the original file is never sent to the client's browser until the hold is captured.** No download manager, extension or "save as" can reach it before then.
+
+What is made hard:
+- The review copy is built for each viewing session and carries the viewer's name, email, time and a session code across the whole image, so any capture is traceable.
+- It is sent once, as shuffled 32 px blocks XOR-ed with a per-session key, from a URL that only answers the page's own script (custom header and `Sec-Fetch-Site` checks). Replaying the URL, as a download manager would, returns 404 or 410, and the bytes on disk are not a valid image.
+- The blocks are reassembled only inside a canvas that is wiped when the viewer closes or the 10-minute session ends.
+- Close-ups at original resolution are small (300 px), watermarked and limited per session.
+- Right-click, drag, copy, save and print are blocked, and the image blurs when the window loses focus.
+
+What no website can do: stop someone photographing their screen, or a determined developer reading pixels from their own browser. That is why the guarantee rests on the original never being sent, and the watermark makes any copy of the review copy traceable.
 
 ## How PayPal is used
 
 | Capability | API | Where |
 |---|---|---|
-| Client checkout | JS SDK Buttons + **Orders v2** create / capture | `app/p/[token]/Portal.tsx`, `lib/paypal.ts` |
-| Payment-gated delivery | Server-side capture verification (status, `custom_id`, amount, currency) | `lib/actions.ts` → `completeCheckout` |
+| Client checkout into a hold | JS SDK Buttons (`intent=authorize`) + **Orders v2** create / authorize | `app/p/[token]/Portal.tsx`, `lib/paypal.ts` |
+| Release on approval or after the review window | **Payments v2** authorization capture | `lib/actions.ts` → `release`, `settleDue` |
+| Cancel without charging | **Payments v2** authorization void | `lib/actions.ts` → `cancelHold` |
+| Payment-gated delivery | Server-side authorization verification (status, `custom_id`, amount, currency); originals served only after capture | `lib/actions.ts` → `completeCheckout`, `app/api/files` |
 | Payment reminders | **Invoicing v2** create + send | `lib/paypal.ts` → `createAndSendInvoice` |
 | Refunds | **Payments v2** capture refund | `lib/paypal.ts` → `refundCapture` |
 | Agentic operations | **PayPal Agent Toolkit** (`@paypal/agent-toolkit/ai-sdk`): `list_invoices`, `get_invoice`, `search_invoicing`, `send_invoice_reminder`, `get_order`, `list_transactions`, `get_merchant_insights` | `lib/agent.ts` |
@@ -33,6 +62,7 @@ Freelancers routinely deliver work and then wait weeks to get paid, or never get
 The app uses one AI provider through the **Vercel AI SDK**, picked by which key is set: Groq (`GROQ_API_KEY`, free tier, GPT-OSS 120B), Google Gemini (`GOOGLE_GENERATIVE_AI_API_KEY`, free tier), Anthropic Claude, or OpenAI.
 
 - **Scoping agent** (`lib/ai.ts`, `generateObject` with a Zod schema): turns an unstructured brief into a typed milestone plan with prices, dates and open questions.
+- **Delivery check** (`lib/check.ts`): Gemini (vision) compares the uploaded images with the agreed deliverables and flags missing, partial or unfinished work; deterministic rules add provable facts. Text found inside files is treated as content, never as instructions.
 - **Reminder writer** (`lib/ai.ts`, `generateText`): drafts payment reminders whose tone escalates with the number already sent.
 - **Money assistant** (`lib/agent.ts`, `generateText` with tools and multi-step calling): combines Sealed AI's own tools with the PayPal Agent Toolkit's tools. Actions that move money (sending an invoice, refunding) need two steps: a preview call, then a confirmed call after the user says yes.
 
@@ -67,7 +97,8 @@ Open http://localhost:3000. The seed script prints a client portal link.
 
 - The client portal receives preview URLs only; original file keys never reach the browser.
 - `/api/files/:id?variant=full` returns `402` for clients until the milestone is paid. Requests without a portal token need the owner session.
-- A milestone becomes `paid` only inside `completeCheckout`, after PayPal confirms the capture. A refund flips it back and the files seal again.
+- A milestone becomes `in_review` only after PayPal confirms the authorization, and `paid` only after the authorization is captured. A void or refund keeps the originals sealed.
+- Files are locked while a milestone is in review or paid; withdrawn files stay on record with their fingerprint.
 - Orders and captures use `PayPal-Request-Id` idempotency keys.
 
 ## Stack

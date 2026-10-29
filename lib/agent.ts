@@ -25,6 +25,8 @@ const SYSTEM = () => `You are Sealed AI's money assistant for ${config.freelance
 You can see their projects, milestones and payments in Sealed AI, and act on their PayPal ${paypalMode === "sandbox" ? "sandbox " : ""}account.
 Today is ${new Date().toISOString().slice(0, 10)}.
 
+How payments work in Sealed AI: when work is delivered, the client pays into a PayPal hold (status in_review). Money moves to the freelancer only when the client approves, or automatically after 3 days. During review the client can request changes (status changes_requested); the hold stays until a revision is sent. "Owed" means awaiting_payment; "held" means in_review or changes_requested.
+
 How you work:
 - Answer with real numbers from your tools, never guesses. Lead with the answer.
 - Money moves only with consent. For send_payment_reminder and refund_milestone, first call with confirmed=false to get a preview, show it to the user, and ask. Call with confirmed=true only after the user clearly says yes in their latest message.
@@ -182,6 +184,8 @@ async function offlineAgent(messages: CoreMessage[]): Promise<AgentReply> {
     if (!rows.length) return { text: "Nobody owes you anything right now. Every milestone is paid.", steps: [{ tool: "list_receivables", source: "sealed", summary: "0 awaiting payment" }] };
     const total = rows.reduce((a, r) => a + r.amount, 0);
     const lines = rows.map((r) => `${r.client}: ${money(r.amount, r.currency)} for ${r.milestone}, due ${r.dueDate}${r.overdue ? " (overdue)" : ""}`);
+    const heldRows = listProjects().flatMap((p) => p.milestones.filter((m) => m.status === "in_review" || m.status === "changes_requested").map((m) => ({ p, m })));
+    if (heldRows.length) lines.push(`\nHeld by PayPal while clients review: ${heldRows.map((h) => `${h.p.clientName} ${money(h.m.amount, h.p.currency)} (${h.m.title}${h.m.status === "changes_requested" ? ", changes requested" : ""})`).join("; ")}.`);
     const overdue = rows.filter((r) => r.overdue);
     return {
       text: `You're owed ${money(total, rows[0].currency)} across ${rows.length} milestone${rows.length === 1 ? "" : "s"}.\n${lines.join("\n")}${overdue.length ? `\n\nWant me to remind ${overdue[0].client}? Say "remind ${overdue[0].client}".` : ""}`,

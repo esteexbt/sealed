@@ -1,4 +1,5 @@
 import "server-only";
+import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import sharp from "sharp";
@@ -32,8 +33,16 @@ export async function storeDeliverable(file: File): Promise<Deliverable> {
   const buf = Buffer.from(await file.arrayBuffer());
   fs.writeFileSync(path.join(/*turbopackIgnore: true*/ FILES_DIR, originalKey), buf);
 
+  const sha256 = crypto.createHash("sha256").update(buf).digest("hex");
+  let width: number | undefined;
+  let height: number | undefined;
   let previewKey: string | null = null;
   if (IMAGE.test(file.type)) {
+    const meta = await sharp(buf).metadata();
+    // EXIF-rotated photos report swapped dimensions.
+    const turned = (meta.orientation || 1) >= 5;
+    width = turned ? meta.height : meta.width;
+    height = turned ? meta.width : meta.height;
     previewKey = `${fid}-preview.jpg`;
     const base = sharp(buf, { animated: false }).rotate().resize({ width: 1100, height: 1100, fit: "inside", withoutEnlargement: true });
     const { data, info } = await base.blur(9).toBuffer({ resolveWithObject: true });
@@ -51,6 +60,10 @@ export async function storeDeliverable(file: File): Promise<Deliverable> {
     originalKey,
     previewKey,
     uploadedAt: new Date().toISOString(),
+    sha256,
+    width,
+    height,
+    removedAt: null,
   };
 }
 
@@ -59,3 +72,16 @@ export function readStored(key: string) {
   return fs.readFileSync(p);
 }
 
+
+export const isImage = (mime: string) => IMAGE.test(mime);
+
+/** Backfills fingerprint and size for files stored before fingerprints existed. */
+export async function fileMeta(f: Deliverable): Promise<Pick<Deliverable, "sha256" | "width" | "height">> {
+  if (f.sha256 && (f.width || !IMAGE.test(f.mime))) return { sha256: f.sha256, width: f.width, height: f.height };
+  const buf = readStored(f.originalKey);
+  const sha256 = crypto.createHash("sha256").update(buf).digest("hex");
+  if (!IMAGE.test(f.mime)) return { sha256 };
+  const meta = await sharp(buf).metadata();
+  const turned = (meta.orientation || 1) >= 5;
+  return { sha256, width: turned ? meta.height : meta.width, height: turned ? meta.width : meta.height };
+}

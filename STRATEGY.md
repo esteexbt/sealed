@@ -52,11 +52,13 @@ Lane 2, our one sponsor prize:
 
 1. Ada, a freelance brand designer, gets a messy DM from a client: "need a logo + brand kit for my coffee shop, launching in 3 weeks, budget is tight."
 2. She pastes it into Sealed AI. The agent returns three milestones, each priced and dated, plus two questions to ask the client.
-3. She uploads the logo concepts to milestone 1. The client portal shows them under a wax seal: blurred and watermarked.
-4. The client pays milestone 1 with PayPal (sandbox). **The seal cracks.** The full-resolution files unlock. This is the hero shot.
-5. Milestone 2 is overdue. Ada asks the agent "who owes me money?" The agent checks PayPal, drafts a friendly reminder, and sends it through PayPal invoicing.
-6. The ledger (AG Grid) shows everything reconciled.
-7. Close on the impact line.
+3. She uploads the logo concepts to milestone 1. The AI check confirms 3 concepts were delivered as agreed. The client portal shows them under a wax seal.
+4. The client pays $350 with PayPal, into a hold: Ada isn't paid yet. The client opens the protected review copy, watermarked with their own name, and zooms in on the detail.
+5. The client asks for one change; the money stays held. Ada uploads the revision.
+6. The client approves. **The seal cracks**, PayPal releases the money, and the originals unlock. This is the hero shot.
+7. Milestone 2 is overdue. Ada asks the agent "who owes me money?" The agent checks PayPal, drafts a friendly reminder, and sends it through PayPal invoicing.
+8. The ledger (AG Grid) shows everything reconciled: paid, held, open.
+9. Close on the impact line: neither side has to trust the other first.
 
 ## Timeline
 

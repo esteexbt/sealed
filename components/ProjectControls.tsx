@@ -42,7 +42,7 @@ export function UploadFiles({ projectId, milestoneId }: { projectId: string; mil
     <div className="upload">
       <input ref={input} type="file" multiple hidden onChange={(e) => upload(e.target.files)} id={`up-${milestoneId}`} />
       <label htmlFor={`up-${milestoneId}`} className="btn btn-ghost small" aria-disabled={busy}>
-        {busy ? "Sealing files…" : "Add deliverables"}
+        {busy ? "Sealing and checking files…" : "Add deliverables"}
       </label>
       {error && <span className="error small">{error}</span>}
     </div>
@@ -78,5 +78,78 @@ export function RemindButton({ projectId, milestoneId, hasEmail }: { projectId: 
       </button>
       {error && <span className="error small">{error}</span>}
     </span>
+  );
+}
+
+/** Freelancer milestone actions: send a revision, release a hold, re-run the check, withdraw a file. */
+export function MilestoneAction({
+  projectId,
+  milestoneId,
+  action,
+  label,
+  busyLabel,
+  confirm,
+  tone = "ghost",
+}: {
+  projectId: string;
+  milestoneId: string;
+  action: "revision" | "cancel" | "check";
+  label: string;
+  busyLabel: string;
+  confirm?: string;
+  tone?: "ghost" | "ink" | "quiet";
+}) {
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  return (
+    <span className="row">
+      <button
+        type="button"
+        className={`btn btn-${tone} small`}
+        disabled={busy}
+        onClick={async () => {
+          if (confirm && !window.confirm(confirm)) return;
+          setBusy(true);
+          setError("");
+          const res = await fetch(`/api/projects/${projectId}/milestones/${milestoneId}/action`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action }),
+          });
+          const json = await res.json();
+          setBusy(false);
+          if (!res.ok) return setError(json.error || "That didn't go through.");
+          router.refresh();
+        }}
+      >
+        {busy ? busyLabel : label}
+      </button>
+      {error && <span className="error small">{error}</span>}
+    </span>
+  );
+}
+
+export function RemoveFile({ projectId, milestoneId, fileId, name }: { projectId: string; milestoneId: string; fileId: string; name: string }) {
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  return (
+    <button
+      type="button"
+      className="file-x"
+      aria-label={`Remove ${name}`}
+      title="Remove this file"
+      disabled={busy}
+      onClick={async () => {
+        if (!window.confirm(`Remove ${name}? It stays in the record but your client won't see it.`)) return;
+        setBusy(true);
+        const res = await fetch(`/api/projects/${projectId}/milestones/${milestoneId}/files/${fileId}`, { method: "DELETE" });
+        setBusy(false);
+        if (!res.ok) window.alert((await res.json()).error);
+        router.refresh();
+      }}
+    >
+      {busy ? "…" : "Remove"}
+    </button>
   );
 }

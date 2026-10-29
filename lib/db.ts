@@ -82,6 +82,18 @@ export function isOverdue(m: Milestone, today = new Date()) {
   return m.dueDate < today.toISOString().slice(0, 10);
 }
 
+/** Files the client is currently being shown (withdrawn files stay on record but out of view). */
+export function currentFiles(m: Milestone) {
+  return m.files.filter((f) => !f.removedAt);
+}
+
+/** Money sitting in a PayPal hold while the client reviews. */
+export function held(p: Project) {
+  return p.milestones
+    .filter((m) => m.status === "in_review" || m.status === "changes_requested")
+    .reduce((sum, m) => sum + m.amount, 0);
+}
+
 export function outstanding(p: Project) {
   return p.milestones
     .filter((m) => m.status === "awaiting_payment")

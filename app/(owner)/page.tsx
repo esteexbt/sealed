@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { listProjects, read, isOverdue, outstanding } from "@/lib/db";
-import { money } from "@/lib/actions";
+import { listProjects, read, isOverdue, outstanding, held } from "@/lib/db";
+import { money, settleDue } from "@/lib/actions";
 import { MilestoneSeals } from "@/components/MilestoneSeals";
 
 function since(iso: string) {
@@ -12,7 +12,8 @@ function since(iso: string) {
   return `${Math.round(h / 24)}d ago`;
 }
 
-export default function Dashboard() {
+export default async function Dashboard() {
+  await settleDue();
   const projects = listProjects();
   const activity = read().activity.slice(0, 12);
   const currency = projects[0]?.currency || "USD";
@@ -20,6 +21,7 @@ export default function Dashboard() {
   const overdueRows = projects.flatMap((p) => p.milestones.filter((m) => isOverdue(m)).map((m) => ({ p, m })));
   const overdue = overdueRows.reduce((a, r) => a + r.m.amount, 0);
   const paid = projects.flatMap((p) => p.milestones).filter((m) => m.status === "paid").reduce((a, m) => a + m.amount, 0);
+  const holding = projects.reduce((a, p) => a + held(p), 0);
 
   if (!projects.length) {
     return (
@@ -46,7 +48,10 @@ export default function Dashboard() {
             </span>
           )}
         </h1>
-        <p className="muted">{money(paid, currency)} collected so far across {projects.length} project{projects.length === 1 ? "" : "s"}.</p>
+        <p className="muted">
+          {money(paid, currency)} collected so far across {projects.length} project{projects.length === 1 ? "" : "s"}.
+          {holding > 0 && <> {money(holding, currency)} more is held by PayPal while clients review your work.</>}
+        </p>
         {overdue > 0 && (
           <Link href="/assistant?q=Who%20owes%20me%20money%3F" className="btn btn-ghost">Chase overdue payments</Link>
         )}
@@ -59,6 +64,7 @@ export default function Dashboard() {
             {projects.map((p) => {
               const late = p.milestones.some((m) => isOverdue(m));
               const left = outstanding(p);
+              const hold = held(p);
               return (
                 <li key={p.id}>
                   <Link href={`/projects/${p.id}`} className="project-row">
@@ -72,6 +78,11 @@ export default function Dashboard() {
                         <>
                           <span className="amount">{money(left, p.currency)}</span>
                           <span className={`status ${late ? "status-overdue" : "status-awaiting_payment"}`}>{late ? "Overdue" : "Unpaid"}</span>
+                        </>
+                      ) : hold > 0 ? (
+                        <>
+                          <span className="amount">{money(hold, p.currency)}</span>
+                          <span className="status status-in_review">Held, in review</span>
                         </>
                       ) : (
                         <span className="status status-paid">Paid in full</span>
