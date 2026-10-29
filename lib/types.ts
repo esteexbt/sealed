@@ -62,7 +62,7 @@ export interface ActivityEvent {
   at: string;
   projectId: string;
   milestoneId?: string;
-  kind: "created" | "file_uploaded" | "payment_captured" | "reminder_sent" | "refunded" | "agent_action";
+  kind: "created" | "file_uploaded" | "payment_captured" | "reminder_sent" | "refunded" | "agent_action" | "edited";
   text: string;
 }
 

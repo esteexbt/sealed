@@ -1,15 +1,28 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AgGridReact } from "ag-grid-react";
-import { AllCommunityModule, ModuleRegistry, themeQuartz, type ColDef, type ValueFormatterParams } from "ag-grid-community";
+import {
+  AllCommunityModule,
+  ModuleRegistry,
+  themeQuartz,
+  type CellValueChangedEvent,
+  type ColDef,
+  type GridApi,
+  type ICellRendererParams,
+  type IRowNode,
+  type RowClassRules,
+  type ValueFormatterParams,
+} from "ag-grid-community";
 
 ModuleRegistry.registerModules([AllCommunityModule]);
 
 export interface LedgerRow {
   projectId: string;
+  milestoneId: string;
   client: string;
+  clientEmail: string;
   project: string;
   milestone: string;
   amount: number;
@@ -21,6 +34,9 @@ export interface LedgerRow {
   reminders: number;
   files: number;
 }
+
+/** Bottom summary row shares the shape; `kind` marks it so renderers can tell. */
+type Row = LedgerRow & { kind?: "total" };
 
 const theme = themeQuartz.withParams({
   fontFamily: "inherit",
@@ -37,8 +53,13 @@ const theme = themeQuartz.withParams({
   fontSize: 14,
 });
 
-const shortDate = (p: { value?: string | null }) =>
-  p.value ? new Date(p.value + "T12:00:00Z").toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "";
+const FILTERS = [
+  { key: "all", label: "All" },
+  { key: "overdue", label: "Overdue" },
+  { key: "unpaid", label: "Unpaid" },
+  { key: "paid", label: "Paid" },
+] as const;
+type FilterKey = (typeof FILTERS)[number]["key"];
 
 const STATUS_CLASS: Record<string, string> = {
   Paid: "status-paid",
@@ -47,66 +68,277 @@ const STATUS_CLASS: Record<string, string> = {
   Refunded: "status-refunded",
 };
 
-export function LedgerGrid({ rows, collected, pending }: { rows: LedgerRow[]; collected: number; pending: number }) {
-  const router = useRouter();
-  const [quick, setQuick] = useState("");
-  const currency = rows[0]?.currency || "USD";
-  const fmt = (n: number, c = currency) => new Intl.NumberFormat("en-US", { style: "currency", currency: c, maximumFractionDigits: n % 1 ? 2 : 0 }).format(n);
+const isOpen = (r?: Row) => r?.status === "Awaiting payment" || r?.status === "Overdue";
+const today = () => new Date().toISOString().slice(0, 10);
+const daysLate = (r?: Row) =>
+  r && r.status === "Overdue" ? Math.floor((Date.parse(today()) - Date.parse(r.due)) / 86400000) : null;
+const shortDate = (p: { value?: string | null }) =>
+  p.value ? new Date(p.value + "T12:00:00Z").toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "";
 
-  const cols = useMemo<ColDef<LedgerRow>[]>(
-    () => [
-      { field: "client", filter: true, flex: 1, minWidth: 130 },
-      { field: "project", filter: true, flex: 1.3, minWidth: 140 },
-      { field: "milestone", flex: 1.2, minWidth: 150 },
+export function LedgerGrid({ rows }: { rows: LedgerRow[] }) {
+  const router = useRouter();
+  const api = useRef<GridApi<Row> | null>(null);
+  const [quick, setQuick] = useState("");
+  const [filter, setFilter] = useState<FilterKey>("all");
+  const filterRef = useRef<FilterKey>("all");
+  const [totals, setTotals] = useState<Row[]>([]);
+  const [toast, setToast] = useState<{ text: string; tone: "ok" | "error" } | null>(null);
+  const currency = rows[0]?.currency || "USD";
+  const fmt = useCallback(
+    (n: number, c = currency) => new Intl.NumberFormat("en-US", { style: "currency", currency: c, maximumFractionDigits: n % 1 ? 2 : 0 }).format(n),
+    [currency],
+  );
+
+  const say = (text: string, tone: "ok" | "error" = "ok") => {
+    setToast({ text, tone });
+    window.setTimeout(() => setToast(null), 3200);
+  };
+
+  /** Totals follow whatever is visible: search, chips and column filters all count. */
+  const recomputeTotals = useCallback(() => {
+    const g = api.current;
+    if (!g) return;
+    let collected = 0;
+    let open = 0;
+    let count = 0;
+    g.forEachNodeAfterFilter((n) => {
+      if (!n.data) return;
+      count++;
+      if (n.data.status === "Paid") collected += n.data.amount;
+      if (isOpen(n.data)) open += n.data.amount;
+    });
+    setTotals([
+      {
+        kind: "total",
+        projectId: "",
+        milestoneId: "",
+        client: `${count} milestone${count === 1 ? "" : "s"}`,
+        clientEmail: "",
+        project: "",
+        milestone: "",
+        amount: collected + open,
+        currency,
+        status: `${fmt(collected)} paid, ${fmt(open)} open`,
+        due: "",
+        paidOn: "",
+        captureId: "",
+        reminders: 0,
+        files: 0,
+      },
+    ]);
+  }, [currency, fmt]);
+
+  const remind = useCallback(
+    async (row: Row, node: IRowNode<Row>) => {
+      const res = await fetch(`/api/projects/${row.projectId}/milestones/${row.milestoneId}/remind`, { method: "POST" });
+      const json = await res.json();
+      if (!res.ok) return say(json.error || "The reminder didn't send.", "error");
+      node.setData({ ...row, reminders: row.reminders + 1 });
+      say(`Reminder sent to ${row.client} as a PayPal invoice.`);
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
+
+  const cols = useMemo(() => {
+    const defs: ColDef<Row>[] = [
+      { field: "client", filter: true, flex: 1, minWidth: 140, tooltipValueGetter: (p) => (p.data?.kind ? null : `${p.data?.client}: ${p.data?.project}`) },
+      { field: "project", hide: true },
+      {
+        field: "milestone",
+        flex: 1.4,
+        minWidth: 160,
+        tooltipField: "milestone",
+        editable: (p) => isOpen(p.data),
+        cellClassRules: { "cell-editable": (p) => isOpen(p.data) },
+      },
       {
         field: "amount",
         type: "rightAligned",
         width: 110,
-        valueFormatter: (p: ValueFormatterParams<LedgerRow, number>) => (p.value == null ? "" : fmt(p.value, p.data?.currency)),
+        editable: (p) => isOpen(p.data),
+        cellEditor: "agNumberCellEditor",
+        cellEditorParams: { min: 0.01, max: 100000, precision: 2 },
+        cellClassRules: { "cell-editable": (p) => isOpen(p.data) },
+        valueFormatter: (p: ValueFormatterParams<Row, number>) => (p.value == null ? "" : fmt(p.value, p.data?.currency)),
         filter: "agNumberColumnFilter",
       },
       {
         field: "status",
-        width: 160,
+        width: 156,
         filter: true,
         cellStyle: { display: "flex", alignItems: "center" },
-        cellRenderer: (p: { value: string }) => <span className={`status ${STATUS_CLASS[p.value] || "status-draft"}`}>{p.value}</span>,
+        cellRenderer: (p: ICellRendererParams<Row, string>) =>
+          p.data?.kind === "total" ? <span className="ledger-total-note">{p.value}</span> : <span className={`status ${STATUS_CLASS[p.value || ""] || "status-draft"}`}>{p.value}</span>,
+        colSpan: (p) => (p.data?.kind === "total" ? 3 : 1),
       },
-      { field: "due", headerName: "Due", width: 100, sort: "asc", valueFormatter: shortDate },
-      { field: "paidOn", headerName: "Paid on", width: 100, valueFormatter: shortDate },
-      { field: "captureId", headerName: "PayPal capture", width: 170 },
-    ],
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [currency],
+      {
+        field: "due",
+        headerName: "Due",
+        width: 96,
+        sort: "asc",
+        editable: (p) => isOpen(p.data),
+        cellEditor: "agDateStringCellEditor",
+        cellClassRules: { "cell-editable": (p) => isOpen(p.data) },
+        valueFormatter: shortDate,
+      },
+      {
+        colId: "late",
+        headerName: "Late",
+        headerTooltip: "Days past the due date",
+        width: 76,
+        type: "rightAligned",
+        valueGetter: (p) => daysLate(p.data),
+        valueFormatter: (p) => (p.value ? `${p.value}d` : ""),
+        cellClassRules: { "cell-late": (p) => (p.value || 0) > 0 },
+      },
+      { field: "paidOn", headerName: "Paid on", width: 96, valueFormatter: shortDate },
+      { field: "captureId", headerName: "PayPal capture", width: 134, tooltipField: "captureId" },
+      {
+        colId: "action",
+        headerName: "",
+        width: 104,
+        sortable: false,
+        resizable: false,
+        cellStyle: { display: "flex", alignItems: "center" },
+        cellRenderer: (p: ICellRendererParams<Row>) =>
+          p.data && isOpen(p.data) && p.node.rowPinned == null ? (
+            <button
+              type="button"
+              className="grid-btn"
+              title={p.data.clientEmail ? `Send ${p.data.client} a PayPal invoice reminder` : "Add a client email first"}
+              disabled={!p.data.clientEmail}
+              onClick={(e) => {
+                const btn = e.currentTarget;
+                btn.disabled = true;
+                btn.textContent = "Sending…";
+                remind(p.data!, p.node).finally(() => {
+                  btn.disabled = false;
+                  btn.textContent = "Remind";
+                });
+              }}
+            >
+              Remind{p.data.reminders ? ` (${p.data.reminders})` : ""}
+            </button>
+          ) : null,
+      },
+    ];
+    return defs;
+  }, [fmt, remind]);
+
+  const rowClassRules = useMemo<RowClassRules<Row>>(
+    () => ({ "row-overdue": (p) => p.data?.status === "Overdue", "row-total": (p) => p.data?.kind === "total" }),
+    [],
   );
+
+  async function onEdit(e: CellValueChangedEvent<Row>) {
+    if (!e.data || e.newValue === e.oldValue) return;
+    const field = e.colDef.field as "milestone" | "amount" | "due";
+    // Guard against a slipped keystroke sending a client a tiny price.
+    if (
+      field === "amount" &&
+      Number(e.newValue) < Number(e.oldValue) / 2 &&
+      !window.confirm(`Drop ${e.data.milestone} from ${fmt(e.oldValue)} to ${fmt(Number(e.newValue))}? The client sees the new price right away.`)
+    ) {
+      e.node.setDataValue("amount", e.oldValue);
+      return;
+    }
+    const body = field === "milestone" ? { title: e.newValue } : field === "amount" ? { amount: Number(e.newValue) } : { dueDate: e.newValue };
+    const res = await fetch(`/api/projects/${e.data.projectId}/milestones/${e.data.milestoneId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const json = await res.json();
+    if (!res.ok) {
+      e.node.setDataValue(e.colDef.field!, e.oldValue);
+      return say(json.error || "That change didn't save.", "error");
+    }
+    // A new due date can move a milestone into or out of overdue.
+    if (field === "due") {
+      const status = json.dueDate < today() ? "Overdue" : "Awaiting payment";
+      e.node.setData({ ...e.data, due: json.dueDate, status });
+    }
+    recomputeTotals();
+    say(field === "amount" ? `Price saved. The client portal now shows ${fmt(json.amount, e.data.currency)}.` : "Saved.");
+  }
+
+  function setChip(k: FilterKey) {
+    filterRef.current = k;
+    setFilter(k);
+    api.current?.onFilterChanged();
+  }
 
   if (!rows.length) return <p className="muted">Nothing here yet. Create a project and its milestones appear in the ledger.</p>;
 
   return (
     <div className="ledger-body">
       <div className="ledger-bar">
-        <p>
-          <strong className="amount">{fmt(collected)}</strong> <span className="muted">collected</span>
-          <span className="ledger-sep" aria-hidden />
-          <strong className="amount" style={{ color: "var(--wax)" }}>{fmt(pending)}</strong> <span className="muted">still sealed</span>
-        </p>
-        <input className="input ledger-search" type="search" placeholder="Search clients, projects, captures" value={quick} onChange={(e) => setQuick(e.target.value)} aria-label="Search the ledger" />
+        <div className="chips" role="group" aria-label="Show milestones">
+          {FILTERS.map((f) => (
+            <button key={f.key} type="button" className="chip" aria-pressed={filter === f.key} onClick={() => setChip(f.key)}>
+              {f.label}
+            </button>
+          ))}
+        </div>
+        <div className="row">
+          <input className="input ledger-search" type="search" placeholder="Search clients or captures" value={quick} onChange={(e) => setQuick(e.target.value)} aria-label="Search the ledger" />
+          <button
+            type="button"
+            className="btn btn-ghost"
+            onClick={() =>
+              api.current?.exportDataAsCsv({
+                fileName: `sealed-ai-ledger-${today()}.csv`,
+                columnKeys: ["client", "project", "milestone", "amount", "status", "due", "late", "paidOn", "captureId"],
+                skipPinnedBottom: true,
+              })
+            }
+          >
+            Export CSV
+          </button>
+        </div>
       </div>
+
       <div className="ledger-grid">
-        <AgGridReact<LedgerRow>
+        <AgGridReact<Row>
           theme={theme}
           rowData={rows}
           columnDefs={cols}
           quickFilterText={quick}
+          includeHiddenColumnsInQuickFilter
           defaultColDef={{ sortable: true, resizable: true }}
           domLayout="autoHeight"
           rowHeight={46}
+          getRowId={(p) => p.data.milestoneId}
+          pinnedBottomRowData={totals}
+          rowClassRules={rowClassRules}
+          singleClickEdit
+          stopEditingWhenCellsLoseFocus
+          tooltipShowDelay={400}
+          isExternalFilterPresent={() => filterRef.current !== "all"}
+          doesExternalFilterPass={(n) => {
+            const s = n.data?.status;
+            const f = filterRef.current;
+            return f === "overdue" ? s === "Overdue" : f === "unpaid" ? isOpen(n.data) : f === "paid" ? s === "Paid" : true;
+          }}
+          onGridReady={(e) => {
+            api.current = e.api;
+            recomputeTotals();
+          }}
+          onFilterChanged={recomputeTotals}
+          onCellValueChanged={onEdit}
+          onRowDoubleClicked={(e) => e.data && !e.data.kind && router.push(`/projects/${e.data.projectId}`)}
           pagination={rows.length > 25}
           paginationPageSize={25}
-          onRowDoubleClicked={(e) => e.data && router.push(`/projects/${e.data.projectId}`)}
+          paginationPageSizeSelector={false}
         />
       </div>
-      <p className="tiny muted">Double-click a row to open its project.</p>
+      <p className="tiny muted">Click a dotted cell to edit an unpaid price, title or due date. Double-click a row to open its project.</p>
+      {toast && (
+        <p className={`toast toast-${toast.tone}`} role="status">
+          {toast.text}
+        </p>
+      )}
     </div>
   );
 }

@@ -16,7 +16,7 @@ Freelancers routinely deliver work and then wait weeks to get paid, or never get
 2. **Sealed deliverables.** Upload files to a milestone. Images get a blurred, watermarked preview generated on the server. The client portal shows only previews, behind a wax seal.
 3. **Pay to unlock (PayPal).** The client pays a milestone through PayPal Checkout. Sealed AI captures the order on the server and unlocks the originals only after PayPal confirms a `COMPLETED` capture for exactly that milestone, amount and currency. The seal cracks open and the downloads appear.
 4. **The assistant chases payments (AI + PayPal Agent Toolkit).** Ask "who owes me money?" or "remind whoever is most overdue". The assistant reads your receivables, drafts a reminder in a tone that gets firmer with each one sent, shows it to you, and only after you approve sends it as a PayPal invoice that links back to the portal. It can also look up invoices, orders and transactions in PayPal, and refund a milestone (which seals its files again).
-5. **Ledger (AG Grid).** Every milestone across every client, reconciled against PayPal capture IDs. Searchable, sortable and filterable.
+5. **Ledger (AG Grid).** Every milestone across every client, reconciled against PayPal capture IDs. Unpaid prices, titles and due dates are edited in the grid and saved to the server; the client portal updates immediately, and a checkout opened at the old price can no longer be captured. Paid milestones are locked. Quick filters (Overdue, Unpaid, Paid), a live totals row that follows every filter, a days-late column, one-click PayPal reminders per row, and CSV export for accounting.
 
 ## How PayPal is used
 

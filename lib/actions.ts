@@ -157,6 +157,48 @@ export async function sendReminder(projectId: string, milestoneId: string, custo
   return { invoiceId: inv.invoiceId, message };
 }
 
+export interface MilestonePatch {
+  title?: string;
+  amount?: number;
+  dueDate?: string;
+}
+
+/** Edits an unpaid milestone. Paid or refunded milestones are part of the payment record and stay fixed. */
+export async function updateMilestone(projectId: string, milestoneId: string, patch: MilestonePatch) {
+  const clean: MilestonePatch = {};
+  if (patch.title !== undefined) {
+    const t = String(patch.title).trim();
+    if (!t || t.length > 120) throw new Error("Titles need 1 to 120 characters.");
+    clean.title = t;
+  }
+  if (patch.amount !== undefined) {
+    const a = Math.round(Number(patch.amount) * 100) / 100;
+    if (!Number.isFinite(a) || a <= 0 || a > 100000) throw new Error("Amounts must be between 0.01 and 100,000.");
+    clean.amount = a;
+  }
+  if (patch.dueDate !== undefined) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(patch.dueDate) || Number.isNaN(Date.parse(patch.dueDate))) throw new Error("Use a valid date.");
+    clean.dueDate = patch.dueDate;
+  }
+  return mutate((s) => {
+    const { project, milestone } = findMilestone(s, projectId, milestoneId);
+    if (!project || !milestone) throw new Error("Milestone not found.");
+    if (milestone.status !== "awaiting_payment" && milestone.status !== "draft") {
+      throw new Error(`${milestone.title} is ${milestone.status === "paid" ? "paid" : milestone.status}, so it can't be edited.`);
+    }
+    // A checkout opened at the old price must not be capturable at the new one.
+    if (clean.amount !== undefined && clean.amount !== milestone.amount && milestone.payment && !milestone.payment.capturedAt) {
+      milestone.payment = null;
+    }
+    const changes = Object.entries(clean)
+      .filter(([k, v]) => (milestone as unknown as Record<string, unknown>)[k] !== v)
+      .map(([k, v]) => (k === "amount" ? `price to ${money(v as number, project.currency)}` : k === "dueDate" ? `due date to ${v}` : `title to "${v}"`));
+    Object.assign(milestone, clean);
+    if (changes.length) log(s, { projectId, milestoneId, kind: "edited", text: `Changed ${milestone.title} ${changes.join(", ")}` });
+    return milestone;
+  });
+}
+
 export async function refundMilestone(projectId: string, milestoneId: string) {
   const s = read();
   const { project, milestone } = findMilestone(s, projectId, milestoneId);
