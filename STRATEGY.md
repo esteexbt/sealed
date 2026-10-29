@@ -18,17 +18,25 @@ The judges score five things equally. Each one is answered below with something 
 | Innovation | Payment-gated delivery. Most invoicing tools stop at "invoice sent", while Sealed ties the payment capture to the files themselves. |
 | Presentation | ST makes motion and video professionally. The demo video follows a real story, end to end, in under 3 minutes. |
 
-## Prizes we're aiming at (one project can be eligible for several)
+## Prizes we're aiming at
 
+Official rule: a project wins at most **one Grand Prize or one Honorable Mention, plus one Sponsor Prize**. The best possible outcome is 1st place plus AG Grid 1st: **$17,000**.
+
+Lane 1, pick one (judges decide which):
 - 1st / 2nd / 3rd overall ($12k / $8k / $5k)
-- Best Use of Agentic Commerce ($5k): the ops agent acts on PayPal via the toolkit
-- Best Use of PayPal + AI ($5k)
-- Most Impactful ($5k)
-- Best Demo Delivery ($5k): our strongest single shot
-- Best Use of AG Grid ($5k / $2k / $1k ×3): the money ledger is an AG Grid table
-- Best Use of Render (credits): we host the live demo on Render
+- Or an Honorable Mention ($5k each): Best Demo Delivery, Best Use of Agentic Commerce, Best Use of PayPal + AI, Most Impactful, Most Creative
 
-Confirm in the official rules whether one project can collect more than one prize, and adjust if not.
+Lane 2, our one sponsor prize:
+- **Best Use of AG Grid** ($5k / $2k / $1k ×3). This is the most cash with the smallest field, so the AG Grid ledger has to be a real feature, not a table bolted on: inline editing of amounts and dates, seal cell renderers, a pinned totals row, CSV export for accounting.
+- Render's prize is credits only and can't stack with AG Grid, so Render is just our host.
+
+## Rules that shape the build
+
+- Judging runs Dec 1–15 and winners are announced around Dec 21. The live demo, API keys and sandbox must stay working until Dec 15.
+- Judges may score only from the video and description, and the rules allow AI-assisted review. The README and Devpost text have to explain everything on their own.
+- Stage one is pass/fail on "reasonably applies the required APIs". PayPal has to be visibly central, both in the video and in the README.
+- The video can't show third-party trademarks or copyrighted music. Use fictional client brands (already done in the seed) and royalty-free or original audio.
+- Prizes are paid by bank transfer or mail after a W-8BEN form. Fees and taxes are ours.
 
 ## Hard requirements (a miss here means disqualification)
 
