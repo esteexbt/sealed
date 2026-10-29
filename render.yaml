@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: sealed
+    runtime: node
+    plan: free
+    buildCommand: npm ci && npm run build
+    startCommand: npm run start:demo
+    healthCheckPath: /login
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: PAYPAL_CLIENT_ID
+        sync: false
+      - key: PAYPAL_CLIENT_SECRET
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: OWNER_PASSWORD
+        sync: false
+      - key: APP_URL
+        sync: false
+      - key: FREELANCER_NAME
+        value: Ada Okafor
