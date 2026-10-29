@@ -30,13 +30,13 @@ Freelancers routinely deliver work and then wait weeks to get paid, or never get
 
 ## How AI is used
 
-The app uses one AI provider through the **Vercel AI SDK**: Anthropic Claude (`ANTHROPIC_API_KEY`) or OpenAI (`OPENAI_API_KEY`).
+The app uses one AI provider through the **Vercel AI SDK**, picked by which key is set: Groq (`GROQ_API_KEY`, free tier, GPT-OSS 120B), Google Gemini (`GOOGLE_GENERATIVE_AI_API_KEY`, free tier), Anthropic Claude, or OpenAI.
 
 - **Scoping agent** (`lib/ai.ts`, `generateObject` with a Zod schema): turns an unstructured brief into a typed milestone plan with prices, dates and open questions.
 - **Reminder writer** (`lib/ai.ts`, `generateText`): drafts payment reminders whose tone escalates with the number already sent.
 - **Money assistant** (`lib/agent.ts`, `generateText` with tools and multi-step calling): combines Sealed AI's own tools with the PayPal Agent Toolkit's tools. Actions that move money (sending an invoice, refunding) need two steps: a preview call, then a confirmed call after the user says yes.
 
-With no AI key set, Sealed AI falls back to a rule-based planner and assistant, so the app always runs. The live AI path is what the demo shows.
+With no AI key set, or if the provider errors or a free-tier quota runs out, Sealed AI falls back to a rule-based planner and assistant, so the app never breaks mid-demo. The live AI path is what the demo shows.
 
 ## Run it locally
 
@@ -50,7 +50,7 @@ npm run dev
 Open http://localhost:3000. The seed script prints a client portal link.
 
 - **PayPal:** create a sandbox app at developer.paypal.com (Apps & Credentials, Sandbox) and set `PAYPAL_CLIENT_ID` and `PAYPAL_CLIENT_SECRET`. Pay in the portal with your sandbox personal account. With no keys set, payments are simulated end to end, using the same verification code path.
-- **AI:** set `ANTHROPIC_API_KEY` or `OPENAI_API_KEY`. `AI_MODEL` overrides the default model.
+- **AI:** set `GROQ_API_KEY` (free at console.groq.com) or `GOOGLE_GENERATIVE_AI_API_KEY` (free at aistudio.google.com). Anthropic and OpenAI keys also work. `AI_MODEL` overrides the default model.
 - **Dashboard password:** set `OWNER_PASSWORD` when deployed. Clients never need an account; their portal link holds an unguessable token.
 
 ## Deploy

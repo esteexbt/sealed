@@ -142,13 +142,20 @@ export async function runAgent(messages: CoreMessage[]): Promise<AgentReply> {
   const m = model();
   if (!m) return offlineAgent(messages);
 
-  const result = await generateText({
-    model: m,
-    system: SYSTEM(),
-    messages,
-    tools: { ...sealedTools(), ...paypalTools() },
-    maxSteps: 8,
-  });
+  let result;
+  try {
+    result = await generateText({
+      model: m,
+      system: SYSTEM(),
+      messages,
+      tools: { ...sealedTools(), ...paypalTools() },
+      maxSteps: 8,
+    });
+  } catch (e) {
+    // Free-tier quota or provider outage: answer with the rule-based assistant instead of failing.
+    console.warn("[ai] assistant failed, using offline fallback:", (e as Error).message);
+    return offlineAgent(messages);
+  }
 
   const steps: AgentStep[] = [];
   for (const step of result.steps) {

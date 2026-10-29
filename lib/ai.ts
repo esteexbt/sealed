@@ -2,6 +2,8 @@ import "server-only";
 import { generateObject, generateText, type LanguageModelV1 } from "ai";
 import { createOpenAI } from "@ai-sdk/openai";
 import { createAnthropic } from "@ai-sdk/anthropic";
+import { createGoogleGenerativeAI } from "@ai-sdk/google";
+import { createGroq } from "@ai-sdk/groq";
 import { z } from "zod";
 import { aiMode, config } from "./config";
 import type { ScopePlan } from "./types";
@@ -10,11 +12,32 @@ export function model(): LanguageModelV1 | null {
   if (aiMode === "anthropic")
     return createAnthropic({ apiKey: config.anthropicKey })(process.env.AI_MODEL || "claude-sonnet-4-5");
   if (aiMode === "openai") return createOpenAI({ apiKey: config.openaiKey })(process.env.AI_MODEL || "gpt-4.1");
+  if (aiMode === "groq") return createGroq({ apiKey: config.groqKey })(process.env.AI_MODEL || "openai/gpt-oss-120b");
+  if (aiMode === "gemini")
+    return createGoogleGenerativeAI({ apiKey: config.googleKey })(process.env.AI_MODEL || "gemini-3.5-flash-lite");
   return null;
 }
 
-export const modelLabel =
-  aiMode === "anthropic" ? "Claude (Anthropic)" : aiMode === "openai" ? "OpenAI" : "Offline planner";
+export const modelLabel = {
+  anthropic: "Claude (Anthropic)",
+  openai: "OpenAI",
+  groq: "GPT-OSS on Groq",
+  gemini: "Google Gemini",
+  offline: "Offline planner",
+}[aiMode];
+
+/**
+ * Free AI tiers have daily limits. If the model errors (quota, outage),
+ * Sealed AI keeps working on its built-in rules instead of failing the user.
+ */
+export async function withFallback<T>(label: string, live: () => Promise<T>, offline: () => T | Promise<T>): Promise<T> {
+  try {
+    return await live();
+  } catch (e) {
+    console.warn(`[ai] ${label} failed, using offline fallback:`, (e as Error).message);
+    return offline();
+  }
+}
 
 const planSchema = z.object({
   title: z.string().describe("Short project title, e.g. 'Brand identity for Bean There Coffee'"),
@@ -54,13 +77,19 @@ Rules:
 export async function scopeBrief(brief: string, freelancerRate?: string): Promise<ScopePlan> {
   const m = model();
   if (!m) return offlinePlan(brief);
-  const { object } = await generateObject({
-    model: m,
-    schema: planSchema,
-    system: SCOPE_SYSTEM,
-    prompt: `Today is ${new Date().toISOString().slice(0, 10)}.${freelancerRate ? ` The freelancer's usual rate: ${freelancerRate}.` : ""}\n\nClient brief:\n"""\n${brief}\n"""`,
-  });
-  return object;
+  return withFallback(
+    "scope",
+    async () => {
+      const { object } = await generateObject({
+        model: m,
+        schema: planSchema,
+        system: SCOPE_SYSTEM,
+        prompt: `Today is ${new Date().toISOString().slice(0, 10)}.${freelancerRate ? ` The freelancer's usual rate: ${freelancerRate}.` : ""}\n\nClient brief:\n"""\n${brief}\n"""`,
+      });
+      return object;
+    },
+    () => offlinePlan(brief),
+  );
 }
 
 export async function draftReminder(opts: {
@@ -74,6 +103,7 @@ export async function draftReminder(opts: {
   const m = model();
   const fallback = offlineReminder(opts);
   if (!m) return fallback;
+  return withFallback("reminder", async () => {
   const { text } = await generateText({
     model: m,
     system:
@@ -81,6 +111,7 @@ export async function draftReminder(opts: {
     prompt: JSON.stringify(opts),
   });
   return text.trim() || fallback;
+  }, () => fallback);
 }
 
 /* --------------------- Offline planner (no API key) --------------------- */
