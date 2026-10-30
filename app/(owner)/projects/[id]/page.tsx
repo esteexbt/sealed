@@ -122,20 +122,9 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
               <div className="ms-actions">
                 {editable && <UploadFiles projectId={p.id} milestoneId={m.id} />}
                 {m.status === "changes_requested" && (
-                  <MilestoneAction projectId={p.id} milestoneId={m.id} action="revision" label="Send revision for review" busyLabel="Sending…" tone="ink" />
+                  <MilestoneAction projectId={p.id} milestoneId={m.id} action="revision" label="Send revision for review" busyLabel="Sending…" tone="ink" done={`Revision sent. ${p.clientName} has 3 days to review.`} />
                 )}
                 {m.status === "awaiting_payment" && <RemindButton projectId={p.id} milestoneId={m.id} hasEmail={Boolean(p.clientEmail)} />}
-                {(m.status === "in_review" || m.status === "changes_requested") && (
-                  <MilestoneAction
-                    projectId={p.id}
-                    milestoneId={m.id}
-                    action="cancel"
-                    label="Cancel and release their hold"
-                    busyLabel="Releasing…"
-                    tone="quiet"
-                    confirm={`Cancel ${m.title}? ${p.clientName}'s ${money(m.amount, p.currency)} hold goes back to them and you won't be paid for this stage.`}
-                  />
-                )}
                 {files.length > 0 && editable && !stale && (
                   <MilestoneAction projectId={p.id} milestoneId={m.id} action="check" label="Check again" busyLabel="Checking…" tone="quiet" />
                 )}
@@ -156,6 +145,34 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
                   </span>
                 )}
               </div>
+
+              {(m.status === "in_review" || m.status === "changes_requested") && (
+                <div className="ms-danger">
+                  <div>
+                    <p className="small"><strong>Cancel this stage</strong></p>
+                    <p className="tiny muted">
+                      {p.clientName}’s {money(m.amount, p.currency)} goes back to them and you won’t be paid for this stage. This can’t be undone.
+                    </p>
+                  </div>
+                  <MilestoneAction
+                    projectId={p.id}
+                    milestoneId={m.id}
+                    action="cancel"
+                    label="Cancel and release hold"
+                    busyLabel="Releasing…"
+                    tone="danger-outline"
+                    done={`Cancelled. ${p.clientName}'s hold was released back to them.`}
+                    confirm={{
+                      title: `Cancel ${m.title}?`,
+                      body: `PayPal releases ${p.clientName}'s ${money(m.amount, p.currency)} hold back to them. You won't be paid for this stage, and the files stay sealed. This can't be undone.`,
+                      confirmLabel: `Cancel and release ${money(m.amount, p.currency)}`,
+                      cancelLabel: "Keep the hold",
+                      tone: "danger",
+                      typeToConfirm: "cancel",
+                    }}
+                  />
+                </div>
+              )}
             </li>
           );
         })}

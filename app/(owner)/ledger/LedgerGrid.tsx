@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useDialog } from "@/components/Dialog";
 import { AgGridReact } from "ag-grid-react";
 import {
   AllCommunityModule,
@@ -87,17 +88,14 @@ export function LedgerGrid({ rows }: { rows: LedgerRow[] }) {
   const [filter, setFilter] = useState<FilterKey>("all");
   const filterRef = useRef<FilterKey>("all");
   const [totals, setTotals] = useState<Row[]>([]);
-  const [toast, setToast] = useState<{ text: string; tone: "ok" | "error" } | null>(null);
   const currency = rows[0]?.currency || "USD";
   const fmt = useCallback(
     (n: number, c = currency) => new Intl.NumberFormat("en-US", { style: "currency", currency: c, maximumFractionDigits: n % 1 ? 2 : 0 }).format(n),
     [currency],
   );
 
-  const say = (text: string, tone: "ok" | "error" = "ok") => {
-    setToast({ text, tone });
-    window.setTimeout(() => setToast(null), 3200);
-  };
+  const dialog = useDialog();
+  const say = dialog.notify;
 
   /** Totals follow whatever is visible: search, chips and column filters all count. */
   const recomputeTotals = useCallback(() => {
@@ -245,7 +243,12 @@ export function LedgerGrid({ rows }: { rows: LedgerRow[] }) {
     if (
       field === "amount" &&
       Number(e.newValue) < Number(e.oldValue) / 2 &&
-      !window.confirm(`Drop ${e.data.milestone} from ${fmt(e.oldValue)} to ${fmt(Number(e.newValue))}? The client sees the new price right away.`)
+      !(await dialog.confirm({
+        title: `Drop the price to ${fmt(Number(e.newValue))}?`,
+        body: `${e.data.milestone} for ${e.data.client} goes from ${fmt(e.oldValue)} to ${fmt(Number(e.newValue))}. Your client sees the new price right away.`,
+        confirmLabel: `Change to ${fmt(Number(e.newValue))}`,
+        cancelLabel: `Keep ${fmt(e.oldValue)}`,
+      }))
     ) {
       e.node.setDataValue("amount", e.oldValue);
       return;
@@ -341,11 +344,6 @@ export function LedgerGrid({ rows }: { rows: LedgerRow[] }) {
         />
       </div>
       <p className="tiny muted">Click a dotted cell to edit an unpaid price, title or due date. Double-click a row to open its project.</p>
-      {toast && (
-        <p className={`toast toast-${toast.tone}`} role="status">
-          {toast.text}
-        </p>
-      )}
     </div>
   );
 }

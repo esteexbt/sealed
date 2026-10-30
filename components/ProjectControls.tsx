@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useDialog, type ConfirmOptions } from "./Dialog";
 
 export function CopyLink({ url }: { url: string }) {
   const [copied, setCopied] = useState(false);
@@ -90,16 +91,19 @@ export function MilestoneAction({
   busyLabel,
   confirm,
   tone = "ghost",
+  done,
 }: {
   projectId: string;
   milestoneId: string;
   action: "revision" | "cancel" | "check";
   label: string;
   busyLabel: string;
-  confirm?: string;
-  tone?: "ghost" | "ink" | "quiet";
+  confirm?: ConfirmOptions;
+  tone?: "ghost" | "ink" | "quiet" | "danger-outline";
+  done?: string;
 }) {
   const router = useRouter();
+  const dialog = useDialog();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   return (
@@ -109,7 +113,7 @@ export function MilestoneAction({
         className={`btn btn-${tone} small`}
         disabled={busy}
         onClick={async () => {
-          if (confirm && !window.confirm(confirm)) return;
+          if (confirm && !(await dialog.confirm(confirm))) return;
           setBusy(true);
           setError("");
           const res = await fetch(`/api/projects/${projectId}/milestones/${milestoneId}/action`, {
@@ -120,6 +124,7 @@ export function MilestoneAction({
           const json = await res.json();
           setBusy(false);
           if (!res.ok) return setError(json.error || "That didn't go through.");
+          if (done) dialog.notify(done);
           router.refresh();
         }}
       >
@@ -132,6 +137,7 @@ export function MilestoneAction({
 
 export function RemoveFile({ projectId, milestoneId, fileId, name }: { projectId: string; milestoneId: string; fileId: string; name: string }) {
   const router = useRouter();
+  const dialog = useDialog();
   const [busy, setBusy] = useState(false);
   return (
     <button
@@ -141,11 +147,18 @@ export function RemoveFile({ projectId, milestoneId, fileId, name }: { projectId
       title="Remove this file"
       disabled={busy}
       onClick={async () => {
-        if (!window.confirm(`Remove ${name}? It stays in the record but your client won't see it.`)) return;
+        const ok = await dialog.confirm({
+          title: `Remove ${name}?`,
+          body: "Your client won’t see it any more. It stays in the project record with its fingerprint, so there’s always proof of what was delivered.",
+          confirmLabel: "Remove file",
+          cancelLabel: "Keep it",
+        });
+        if (!ok) return;
         setBusy(true);
         const res = await fetch(`/api/projects/${projectId}/milestones/${milestoneId}/files/${fileId}`, { method: "DELETE" });
         setBusy(false);
-        if (!res.ok) window.alert((await res.json()).error);
+        if (!res.ok) return dialog.notify((await res.json()).error || "The file couldn’t be removed.", "error");
+        dialog.notify(`Removed ${name}.`);
         router.refresh();
       }}
     >
