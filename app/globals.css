@@ -516,3 +516,43 @@ p { margin: 0; }
 .nt-revision .nt-note { border-left-color: var(--rule-strong); color: var(--ink-2); }
 .pm-head { grid-template-columns: 32px minmax(0, 1fr) auto; align-items: start; }
 .nt-x:focus { outline: none; } .nt-x:focus-visible { outline: 2px solid var(--ink); outline-offset: 1px; }
+
+/* ------------------------------ project dial (client portal) ------------------------------ */
+.portal-head { grid-template-columns: minmax(0, 1fr) auto; column-gap: 40px; }
+.portal-head > :not(.dial) { grid-column: 1; }
+.dial { grid-column: 2; grid-row: 1 / span 4; align-self: center; display: grid; justify-items: center; gap: 14px; padding: 20px 22px; background: var(--sheet); border-radius: var(--r-m); box-shadow: var(--shadow-paper); min-width: 230px; }
+.dial-ring { position: relative; width: 148px; height: 148px; }
+.dial-ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.dial-ring circle { fill: none; stroke-width: 12; }
+.dial-track { stroke: var(--rule); }
+.dial-paid { stroke: var(--paid); stroke-linecap: round; transition: stroke-dasharray 1s cubic-bezier(.3, .7, .2, 1); }
+.dial-held { transition: stroke-dasharray 1s cubic-bezier(.3, .7, .2, 1), stroke-dashoffset 1s cubic-bezier(.3, .7, .2, 1); }
+.dial-num { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; line-height: 1.05; }
+.dial-num strong { font-family: var(--serif); font-weight: 400; font-size: 2.1rem; color: var(--ink); font-variant-numeric: tabular-nums; }
+.dial-num span { font-size: 0.75rem; color: var(--muted); font-weight: 600; letter-spacing: .03em; margin-top: 4px; }
+.dial-done .dial-num strong { color: var(--paid); }
+.dial-legend { margin: 0; display: grid; gap: 6px; width: 100%; font-size: 0.86rem; }
+.dial-legend > div { display: flex; justify-content: space-between; gap: 16px; }
+.dial-legend dt { color: var(--ink-2); display: flex; align-items: center; gap: 8px; }
+.dial-legend dd { margin: 0; font-weight: 650; font-variant-numeric: tabular-nums; }
+.dial-legend i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+.dot-paid { background: var(--paid); }
+.dot-held { background: repeating-linear-gradient(-45deg, #c9a227 0 2px, #e6cf7a 2px 4px); }
+.dot-open { background: var(--rule-strong); }
+.dial-legend p { margin: 4px 0 0; padding-top: 8px; border-top: 1px solid var(--rule); text-align: center; }
+@media (prefers-reduced-motion: reduce) { .dial-paid, .dial-held { transition: none; } }
+@media (max-width: 760px) {
+  .portal-head { grid-template-columns: 1fr; }
+  .portal-from { order: 1; } .portal-head h1 { order: 2; } .portal-head .lede { order: 3; } .portal-head .how { order: 5; } .portal-head .notice { order: 6; }
+  .dial { grid-column: 1; grid-row: auto; order: 4; grid-template-columns: auto 1fr; align-items: center; justify-items: stretch; gap: 18px; padding: 16px; min-width: 0; }
+  .dial-ring { width: 108px; height: 108px; }
+  .dial-num strong { font-size: 1.6rem; }
+  .dial-legend p { text-align: left; }
+}
+
+/* Unlocked file cards stay compact in narrow tiles. */
+.pm-dl { gap: 8px; padding: 8px 8px 8px 10px; }
+.pm-dl .pm-file-name { -webkit-line-clamp: 2; overflow-wrap: anywhere; font-size: 0.84rem; }
+.pm-dl-text .tiny { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pm-dl-icon { width: 30px; height: 30px; }
+.dial-num strong { font-size: 1.85rem; }

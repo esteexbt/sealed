@@ -100,6 +100,14 @@ export function Portal(props: Props) {
     <div className="portal">
       <LiveRefresh />
       <header className="portal-head">
+        <ProjectDial
+          total={total}
+          released={released}
+          held={heldAmt}
+          approved={milestones.filter((m) => m.status === "paid").length}
+          stages={milestones.filter((m) => m.status !== "cancelled" && m.status !== "refunded").length}
+          fmt={fmt}
+        />
         <p className="portal-from">
           <Seal size={26} monogram={props.freelancer.charAt(0)} />
           {props.freelancer}
@@ -108,15 +116,6 @@ export function Portal(props: Props) {
         <p className="lede muted">
           Hi {props.clientName}. When a stage is ready, you pay into a PayPal hold and review the full work. {props.freelancer} only receives the money when you approve it.
         </p>
-        <div className="portal-progress" aria-label={`${fmt(released)} released and ${fmt(heldAmt)} held, of ${fmt(total)}`}>
-          <div className="portal-bar">
-            <span className="bar-paid" style={{ width: `${total ? (released / total) * 100 : 0}%` }} />
-            <span className="bar-held" style={{ width: `${total ? (heldAmt / total) * 100 : 0}%` }} />
-          </div>
-          <span className="small muted">
-            {fmt(released)} released{heldAmt > 0 ? `, ${fmt(heldAmt)} held for your review` : ""}, of {fmt(total)}
-          </span>
-        </div>
         <details className="how">
           <summary className="small">How your payment is protected</summary>
           <ol className="small">
@@ -266,7 +265,7 @@ function MilestoneBlock({
                 <a className="pm-dl" href={`/api/files/${f.id}?t=${token}&variant=full&download=1`} download={f.name}>
                   <span className="pm-dl-text">
                     <span className="pm-file-name" title={f.name}>{f.name}</span>
-                    <span className="tiny muted">{fileKind(f)} · {formatSize(f.size)}</span>
+                    <span className="tiny muted" title={`${fileKind(f)} · ${formatSize(f.size)}`}>{f.pdf ? "PDF" : f.svg ? "SVG" : f.name.split(".").pop()?.toUpperCase()} · {formatSize(f.size)}</span>
                   </span>
                   <span className="pm-dl-icon" aria-hidden>
                     <DownloadIcon />
@@ -476,5 +475,88 @@ function DownloadIcon() {
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
       <path d="M8 2.5v8M4.5 7 8 10.5 11.5 7M3 13.5h10" />
     </svg>
+  );
+}
+
+/** Whole-project progress: share of the price released, with what's held shown on the same ring. */
+function ProjectDial({
+  total,
+  released,
+  held,
+  approved,
+  stages,
+  fmt,
+}: {
+  total: number;
+  released: number;
+  held: number;
+  approved: number;
+  stages: number;
+  fmt: (n: number) => string;
+}) {
+  const R = 52;
+  const C = 2 * Math.PI * R;
+  const paidPart = total ? released / total : 0;
+  const heldPart = total ? held / total : 0;
+  const pct = Math.round(paidPart * 100);
+  const [drawn, setDrawn] = useState(false);
+  useEffect(() => {
+    const t = requestAnimationFrame(() => setDrawn(true));
+    return () => cancelAnimationFrame(t);
+  }, []);
+  const toPay = Math.max(0, total - released - held);
+  const done = total > 0 && released >= total;
+
+  return (
+    <aside className={`dial${done ? " dial-done" : ""}`} aria-label={`Project ${pct}% paid out: ${fmt(released)} released, ${fmt(held)} held, ${fmt(toPay)} still to pay, of ${fmt(total)}`}>
+      <div className="dial-ring">
+        <svg viewBox="0 0 128 128" aria-hidden>
+          <defs>
+            <pattern id="dial-held" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+              <rect width="6" height="6" fill="#e6cf7a" />
+              <rect width="3" height="6" fill="#c9a227" />
+            </pattern>
+          </defs>
+          <circle cx="64" cy="64" r={R} className="dial-track" />
+          {heldPart > 0 && (
+            <circle
+              cx="64"
+              cy="64"
+              r={R}
+              className="dial-held"
+              stroke="url(#dial-held)"
+              strokeDasharray={`${drawn ? heldPart * C : 0} ${C}`}
+              strokeDashoffset={-(drawn ? paidPart * C : 0)}
+            />
+          )}
+          {paidPart > 0 && <circle cx="64" cy="64" r={R} className="dial-paid" strokeDasharray={`${drawn ? paidPart * C : 0} ${C}`} />}
+        </svg>
+        <div className="dial-num">
+          <strong>{pct}%</strong>
+          <span>{done ? "complete" : "paid out"}</span>
+        </div>
+      </div>
+      <dl className="dial-legend">
+        <div>
+          <dt><i className="dot-paid" />Released</dt>
+          <dd>{fmt(released)}</dd>
+        </div>
+        {held > 0 && (
+          <div>
+            <dt><i className="dot-held" />Held for review</dt>
+            <dd>{fmt(held)}</dd>
+          </div>
+        )}
+        {toPay > 0 && (
+          <div>
+            <dt><i className="dot-open" />Still to pay</dt>
+            <dd>{fmt(toPay)}</dd>
+          </div>
+        )}
+        <p className="tiny muted">
+          {approved} of {stages} stage{stages === 1 ? "" : "s"} approved · {fmt(total)} total
+        </p>
+      </dl>
+    </aside>
   );
 }
