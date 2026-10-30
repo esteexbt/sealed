@@ -1,0 +1,30 @@
+/* Sealed design tokens v1.0. Colours, type, radius and shadow used across the product. */
+:root {
+  /* Core */
+  --night: #12172E;        /* logo, headings, dark surfaces */
+  --seal: #4C44E0;         /* brand colour: the seal, primary actions, links, AI */
+  --seal-deep: #3A32C4;    /* Seal hover / pressed */
+  --seal-light: #A9A5FF;   /* the seal on Night */
+  --seal-soft: #ECEBFD;    /* AI and selected backgrounds */
+  --paper: #F4F5F9;        /* page background */
+  --sheet: #FFFFFF;        /* cards and panels */
+  --ink-2: #3A4157;        /* body text */
+  --slate: #5E6478;        /* secondary text */
+  --rule: #DDE0E8;         /* borders, dividers */
+  --rule-strong: #BCC1CF;  /* input and secondary button borders */
+
+  /* Money states: only ever used to describe a payment */
+  --released: #0F7A55;   --released-soft: #E3F3EC;
+  --held: #F5B72A;       --held-text: #8A5A00;   --held-soft: #FCF1D8;
+  --at-risk: #C4293F;    --at-risk-deep: #9E1F31; --at-risk-soft: #FBE9EC;
+
+  /* Type */
+  --font-display: "Young Serif", Georgia, serif;
+  --font-ui: "Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  /* Shape */
+  --radius-s: 8px;   /* buttons, inputs */
+  --radius-m: 14px;  /* cards */
+  --shadow-card: 0 1px 0 rgba(18, 23, 46, .04), 0 8px 24px -12px rgba(18, 23, 46, .18);
+  --focus-ring: 0 0 0 2px var(--sheet), 0 0 0 4px var(--seal);
+}

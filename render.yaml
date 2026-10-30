@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: sealedai
+    name: sealed
     runtime: node
     plan: free
     buildCommand: npm ci && npm run build

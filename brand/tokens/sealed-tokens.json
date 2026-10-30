@@ -1,0 +1,31 @@
+{
+  "name": "Sealed",
+  "version": "1.0.0",
+  "tokens": {
+    "night": "#12172E",
+    "seal": "#4C44E0",
+    "seal-deep": "#3A32C4",
+    "seal-light": "#A9A5FF",
+    "seal-soft": "#ECEBFD",
+    "paper": "#F4F5F9",
+    "sheet": "#FFFFFF",
+    "ink-2": "#3A4157",
+    "slate": "#5E6478",
+    "rule": "#DDE0E8",
+    "rule-strong": "#BCC1CF",
+    "released": "#0F7A55",
+    "released-soft": "#E3F3EC",
+    "held": "#F5B72A",
+    "held-text": "#8A5A00",
+    "held-soft": "#FCF1D8",
+    "at-risk": "#C4293F",
+    "at-risk-deep": "#9E1F31",
+    "at-risk-soft": "#FBE9EC",
+    "font-display": "\"Young Serif\", Georgia, serif",
+    "font-ui": "\"Public Sans\", system-ui, -apple-system, \"Segoe UI\", sans-serif",
+    "radius-s": "8px",
+    "radius-m": "14px",
+    "shadow-card": "0 1px 0 rgba(18, 23, 46, .04), 0 8px 24px -12px rgba(18, 23, 46, .18)",
+    "focus-ring": "0 0 0 2px var(--sheet), 0 0 0 4px var(--seal)"
+  }
+}

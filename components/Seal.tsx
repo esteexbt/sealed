@@ -1,104 +1,60 @@
-"use client";
+import { DOT, LOCKUP, MARK } from "./brandPaths";
 
-import { useId } from "react";
+type Tone = "primary" | "reverse" | "mono";
 
-/** Organic wax outline: a circle with soft, deterministic wobble. */
-function blobPath(r: number, cx = 50, cy = 50, points = 28) {
-  const pts: [number, number][] = [];
-  for (let i = 0; i < points; i++) {
-    const a = (i / points) * Math.PI * 2;
-    const wobble = Math.sin(i * 2.7) * 2.2 + Math.cos(i * 1.3) * 1.6;
-    pts.push([cx + Math.cos(a) * (r + wobble), cy + Math.sin(a) * (r + wobble)]);
-  }
-  let d = `M ${pts[0][0].toFixed(2)} ${pts[0][1].toFixed(2)}`;
-  for (let i = 0; i < pts.length; i++) {
-    const p = pts[i];
-    const n = pts[(i + 1) % pts.length];
-    const mx = (p[0] + n[0]) / 2;
-    const my = (p[1] + n[1]) / 2;
-    d += ` Q ${p[0].toFixed(2)} ${p[1].toFixed(2)} ${mx.toFixed(2)} ${my.toFixed(2)}`;
-  }
-  return d + " Z";
-}
+const TONES: Record<Tone, { body: string; dot: string; word: string }> = {
+  primary: { body: "var(--night)", dot: "var(--seal)", word: "var(--night)" },
+  reverse: { body: "#ffffff", dot: "var(--seal-light)", word: "#ffffff" },
+  mono: { body: "currentColor", dot: "currentColor", word: "currentColor" },
+};
 
-const OUTLINE = blobPath(44);
-const CRACK = "M 54 0 L 49 18 L 56 31 L 47 47 L 55 60 L 46 76 L 52 100";
-const LEFT = `${CRACK} L 0 100 L 0 0 Z`;
-const RIGHT = `${CRACK} L 100 100 L 100 0 Z`;
-
+/**
+ * The Sealed mark: an envelope folded into a hexagon, closed with a seal.
+ * `broken` plays the release moment: the seal opens and turns Released green.
+ * `halo` draws a white edge so the mark reads on top of busy previews.
+ */
 export function Seal({
   size = 64,
   broken = false,
-  monogram = "S",
   label = "Sealed",
+  tone = "primary",
+  halo = false,
 }: {
   size?: number;
   broken?: boolean;
-  monogram?: string;
   label?: string;
+  tone?: Tone;
+  halo?: boolean;
+  /** Kept for older callers; the mark has no monogram. */
+  monogram?: string;
 }) {
-  const uid = useId().replace(/:/g, "");
-  const face = (
-    <>
-      <path d={OUTLINE} fill={`url(#wax-${uid})`} />
-      <path d={OUTLINE} fill="none" stroke="#5c0716" strokeOpacity=".35" strokeWidth="1.2" />
-      <circle cx="50" cy="50" r="29" fill="none" stroke="#5c0716" strokeOpacity=".45" strokeWidth="2.2" />
-      <circle cx="50" cy="50" r="29" fill="none" stroke="#ffffff" strokeOpacity=".18" strokeWidth="1" transform="translate(.8 .8)" />
-      <text
-        x="50"
-        y="51"
-        textAnchor="middle"
-        dominantBaseline="central"
-        fontFamily="Young Serif, Georgia, serif"
-        fontSize="34"
-        fill="#5c0716"
-        fillOpacity=".55"
-      >
-        {monogram}
-      </text>
-      <text
-        x="49.3"
-        y="50.2"
-        textAnchor="middle"
-        dominantBaseline="central"
-        fontFamily="Young Serif, Georgia, serif"
-        fontSize="34"
-        fill="#ffffff"
-        fillOpacity=".22"
-      >
-        {monogram}
-      </text>
-      <ellipse cx="36" cy="30" rx="11" ry="6" fill="#fff" fillOpacity=".16" transform="rotate(-30 36 30)" />
-    </>
-  );
+  const t = TONES[tone];
+  const w = (size * MARK.w) / MARK.h;
   return (
     <svg
       className={`seal${broken ? " seal-broken" : ""}`}
-      width={size}
+      width={w}
       height={size}
-      viewBox="-10 -10 120 120"
+      viewBox={`${halo ? -4 : 0} ${halo ? -4 : 0} ${MARK.w + (halo ? 8 : 0)} ${MARK.h + (halo ? 8 : 0)}`}
       role="img"
-      aria-label={broken ? "Seal broken: paid" : label}
+      aria-label={broken ? "Seal opened: paid" : label}
     >
-      <defs>
-        <radialGradient id={`wax-${uid}`} cx="38%" cy="32%" r="75%">
-          <stop offset="0" stopColor="#d23149" />
-          <stop offset=".55" stopColor="#a8142c" />
-          <stop offset="1" stopColor="#6d0a1b" />
-        </radialGradient>
-        <clipPath id={`l-${uid}`}>
-          <path d={LEFT} />
-        </clipPath>
-        <clipPath id={`r-${uid}`}>
-          <path d={RIGHT} />
-        </clipPath>
-      </defs>
-      <g className="seal-half seal-left" clipPath={`url(#l-${uid})`}>
-        {face}
-      </g>
-      <g className="seal-half seal-right" clipPath={`url(#r-${uid})`}>
-        {face}
-      </g>
+      {halo && <path d={MARK.body} fill="#fff" stroke="#fff" strokeWidth="9" strokeLinejoin="round" />}
+      <path className="seal-body" d={MARK.body} fill={t.body} fillRule="evenodd" />
+      <circle className="seal-ring" cx={DOT.cx} cy={DOT.cy} r={DOT.r} fill="none" stroke="var(--paid)" strokeWidth="3" opacity="0" />
+      <path className="seal-dot" d={MARK.dot} fill={t.dot} style={{ transformOrigin: `${DOT.cx}px ${DOT.cy}px` }} />
+    </svg>
+  );
+}
+
+/** The horizontal logo: mark and wordmark. */
+export function Logo({ height = 30, tone = "primary", label = "Sealed" }: { height?: number; tone?: Tone; label?: string }) {
+  const t = TONES[tone];
+  return (
+    <svg className="logo" width={(height * LOCKUP.w) / LOCKUP.h} height={height} viewBox={`0 0 ${LOCKUP.w} ${LOCKUP.h}`} role="img" aria-label={label}>
+      <path d={LOCKUP.body} fill={t.body} fillRule="evenodd" />
+      <path d={LOCKUP.dot} fill={t.dot} />
+      <path d={LOCKUP.word} fill={t.word} />
     </svg>
   );
 }

@@ -44,8 +44,8 @@ export function ProjectDial({
         <svg viewBox="0 0 128 128" aria-hidden>
           <defs>
             <pattern id="dial-held" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-              <rect width="6" height="6" fill="#e6cf7a" />
-              <rect width="3" height="6" fill="#c9a227" />
+              <rect width="6" height="6" fill="#f9d57e" />
+              <rect width="3" height="6" fill="#f5b72a" />
             </pattern>
           </defs>
           <circle cx="64" cy="64" r={R} className="dial-track" />

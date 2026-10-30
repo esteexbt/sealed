@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: { params: Promise<{ token: string }> }): Promise<Metadata> {
   const p = getProjectByToken((await params).token);
-  return { title: p ? `${p.title} | Sealed AI` : "Sealed AI", robots: { index: false } };
+  return { title: p ? `${p.title} | Sealed` : "Sealed", robots: { index: false } };
 }
 
 export default async function PortalPage({ params }: { params: Promise<{ token: string }> }) {

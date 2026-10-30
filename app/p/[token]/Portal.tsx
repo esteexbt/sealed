@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Seal } from "@/components/Seal";
+import { Logo, Seal } from "@/components/Seal";
 import { SecureViewer } from "@/components/SecureViewer";
 import { CheckCard } from "@/components/CheckCard";
 import { ChangeRequestDialog } from "@/components/ChangeRequestDialog";
@@ -111,7 +111,7 @@ export function Portal(props: Props) {
         />
         <div className="head-main">
           <p className="portal-from">
-            <Seal size={26} monogram={props.freelancer.charAt(0)} />
+            <Seal size={22} label="Protected by Sealed" />
             {props.freelancer}
           </p>
           <h1>{props.title}</h1>
@@ -131,6 +131,7 @@ export function Portal(props: Props) {
       </ol>
 
       <footer className="portal-foot tiny muted">
+        <span className="portal-by">Protected by <Logo height={16} label="Sealed" /></span>
         Payments are processed and held by PayPal. {props.freelancer} never sees your card or bank details.
       </footer>
       {viewing && <SecureViewer token={props.token} fileId={viewing.id} fileName={viewing.name} onClose={() => setViewing(null)} />}
@@ -246,7 +247,7 @@ function MilestoneBlock({
                 )}
                 {!revealed && (
                   <span className="pm-seal">
-                    <Seal size={64} broken={opening} />
+                    <Seal size={50} broken={opening} halo />
                   </span>
                 )}
                 {reviewing && !opening && f.reviewable && (
@@ -312,7 +313,7 @@ function MilestoneBlock({
             <button type="button" className="btn btn-ghost" onClick={() => { setError(""); setAsking(true); }} disabled={busy !== ""}>
               Request changes
             </button>
-            <button type="button" className="btn btn-wax" onClick={() => act("approve")} disabled={busy !== ""}>
+            <button type="button" className="btn btn-seal" onClick={() => act("approve")} disabled={busy !== ""}>
               {busy === "approve" ? "Releasing…" : `Approve and release ${fmt(m.amount)}`}
             </button>
           </div>
@@ -326,7 +327,7 @@ function MilestoneBlock({
           <div className="pm-unlocked">
             <span className="status status-paid">Unlocked</span>
             {m.status === "paid" && m.files.length > 1 && (
-              <a className="btn btn-paid" href={`/api/download?t=${token}&m=${m.id}`} download>
+              <a className="btn btn-seal" href={`/api/download?t=${token}&m=${m.id}`} download>
                 <DownloadIcon /> Download all {m.files.length} files
               </a>
             )}
@@ -432,7 +433,7 @@ function PayButton({
     <div className="pm-paypal">
       <button
         type="button"
-        className={`btn ${emphasis ? "btn-wax" : "btn-ghost"} pm-sim`}
+        className={`btn ${emphasis ? "btn-seal" : "btn-ghost"} pm-sim`}
         disabled={busy}
         onClick={async () => {
           setBusy(true);

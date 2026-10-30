@@ -75,7 +75,7 @@ const simAuths = (g.__sealedSimAuths ??= new Map());
 
 /**
  * intent AUTHORIZE: when the client approves, PayPal reserves the money on
- * their account but does not move it. Sealed AI captures it only when the
+ * their account but does not move it. Sealed captures it only when the
  * client approves the work (or the review window ends), and voids it if the
  * milestone is cancelled.
  */
@@ -101,7 +101,7 @@ export async function createOrder(input: OrderInput): Promise<{ id: string }> {
       payment_source: {
         paypal: {
           experience_context: {
-            brand_name: "Sealed AI",
+            brand_name: "Sealed",
             user_action: "PAY_NOW",
             shipping_preference: "NO_SHIPPING",
           },

@@ -28,9 +28,9 @@ export default async function Dashboard() {
       <section className="empty">
         <h1>Paste a client brief and get a payment plan back.</h1>
         <p className="lede muted">
-          Sealed AI splits the work into paid milestones, sends them through PayPal, and keeps every file sealed until the client pays.
+          Sealed splits the work into paid milestones, sends them through PayPal, and keeps every file sealed until the client pays.
         </p>
-        <Link href="/new" className="btn btn-wax">Start from a brief</Link>
+        <Link href="/new" className="btn btn-seal">Start from a brief</Link>
       </section>
     );
   }

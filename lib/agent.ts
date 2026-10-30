@@ -21,11 +21,11 @@ export interface AgentReply {
   pending?: { kind: "remind" | "refund"; projectId: string; milestoneId: string; message?: string } | null;
 }
 
-const SYSTEM = () => `You are Sealed AI's money assistant for ${config.freelancerName}, an independent freelancer.
-You can see their projects, milestones and payments in Sealed AI, and act on their PayPal ${paypalMode === "sandbox" ? "sandbox " : ""}account.
+const SYSTEM = () => `You are Sealed's money assistant for ${config.freelancerName}, an independent freelancer.
+You can see their projects, milestones and payments in Sealed, and act on their PayPal ${paypalMode === "sandbox" ? "sandbox " : ""}account.
 Today is ${new Date().toISOString().slice(0, 10)}.
 
-How payments work in Sealed AI: when work is delivered, the client pays into a PayPal hold (status in_review). Money moves to the freelancer only when the client approves, or automatically after 3 days. During review the client can request changes (status changes_requested); the hold stays until a revision is sent. "Owed" means awaiting_payment; "held" means in_review or changes_requested.
+How payments work in Sealed: when work is delivered, the client pays into a PayPal hold (status in_review). Money moves to the freelancer only when the client approves, or automatically after 3 days. During review the client can request changes (status changes_requested); the hold stays until a revision is sent. "Owed" means awaiting_payment; "held" means in_review or changes_requested.
 
 How you work:
 - Answer with real numbers from your tools, never guesses. Lead with the answer.
@@ -67,7 +67,7 @@ function sealedTools() {
       parameters: z.object({
         projectId: z.string(),
         milestoneId: z.string(),
-        message: z.string().optional().describe("Custom message. Omit to let Sealed AI draft one."),
+        message: z.string().optional().describe("Custom message. Omit to let Sealed draft one."),
         confirmed: z.boolean().describe("true only after the user approved the preview"),
       }),
       execute: async ({ projectId, milestoneId, message, confirmed }) => {

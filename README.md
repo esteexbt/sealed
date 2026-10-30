@@ -1,8 +1,8 @@
-# Sealed AI
+# Sealed
 
 **Your work stays sealed until you're paid.**
 
-Sealed AI is an AI agent for freelancers. Paste a client's brief and it returns a priced milestone plan. Deliverables are shown to the client as sealed, watermarked previews. When the client pays a milestone with PayPal, the seal breaks and the full files unlock. An assistant built on the PayPal Agent Toolkit chases late payments for you, and asks before it sends anything.
+Sealed is an AI agent for freelancers. Paste a client's brief and it returns a priced milestone plan. Deliverables are shown to the client as sealed, watermarked previews. When the client pays a milestone with PayPal, the seal breaks and the full files unlock. An assistant built on the PayPal Agent Toolkit chases late payments for you, and asks before it sends anything.
 
 Built for the [PayPal AI Hackathon](https://paypalaihackathon.devpost.com/).
 
@@ -10,11 +10,11 @@ Built for the [PayPal AI Hackathon](https://paypalaihackathon.devpost.com/).
 
 Freelancers routinely deliver work and then wait weeks to get paid, or never get paid at all. Invoicing tools stop at "invoice sent". After that, the freelancer is left chasing, and the client already has the files.
 
-## How Sealed AI works
+## How Sealed works
 
 1. **Brief to plan (AI).** Paste a DM, email or call notes. The scoping agent splits the work into 2–5 milestones, each ending in something the client can see. It prices them (fitting a stated budget), dates them against the client's deadline, and lists the questions worth asking first. Every field stays editable.
 2. **Deliver and get checked (AI).** The freelancer uploads each stage's files. Each file is fingerprinted (SHA-256) and measured. A delivery check compares the files against the agreed deliverables: rules prove the facts (counts, formats, sizes, duplicates), and Gemini looks at the images to judge whether they match and look finished. Both sides see the same check before any money moves.
-3. **Pay into a PayPal hold.** The client sees sealed previews and the check, then pays with PayPal Checkout using `intent: AUTHORIZE`. PayPal reserves the money on the client's account; it is not sent to the freelancer yet. Sealed AI verifies the authorization (status, `custom_id`, amount, currency) on the server before anything changes.
+3. **Pay into a PayPal hold.** The client sees sealed previews and the check, then pays with PayPal Checkout using `intent: AUTHORIZE`. PayPal reserves the money on the client's account; it is not sent to the freelancer yet. Sealed verifies the authorization (status, `custom_id`, amount, currency) on the server before anything changes.
 4. **Review the full work, protected.** While the money is held, the client opens a protected review copy of each image, SVG or PDF page and can inspect any spot at full original resolution. PDFs are rendered page by page on the server (pdf.js), so the PDF file itself never reaches the client before approval either. The original file never leaves the server.
 5. **Approve, or ask for changes.**
    - **Approve** captures the authorization: the freelancer is paid, the seal cracks, and the originals unlock for download.
@@ -26,7 +26,7 @@ Freelancers routinely deliver work and then wait weeks to get paid, or never get
 
 ## Why both sides can trust it
 
-| Fear | What Sealed AI does |
+| Fear | What Sealed does |
 |---|---|
 | Client: "I'll pay and get junk." | The AI check flags missing or weak deliverables before payment. Payment is only held, and the client reviews the full work before releasing it. Unfinished work gets a change request, and if it's never fixed the hold is voided. |
 | Freelancer: "They'll take the work and not pay." | The money is reserved by PayPal before the client sees the full work. The client only ever sees a watermarked review copy; originals unlock on capture. Silence releases payment after 3 days. |
@@ -64,9 +64,9 @@ The app uses one AI provider through the **Vercel AI SDK**, picked by which key 
 - **Scoping agent** (`lib/ai.ts`, `generateObject` with a Zod schema): turns an unstructured brief into a typed milestone plan with prices, dates and open questions.
 - **Delivery check** (`lib/check.ts`): Gemini (vision) compares the uploaded images with the agreed deliverables and flags missing, partial or unfinished work; deterministic rules add provable facts. Text found inside files is treated as content, never as instructions.
 - **Reminder writer** (`lib/ai.ts`, `generateText`): drafts payment reminders whose tone escalates with the number already sent.
-- **Money assistant** (`lib/agent.ts`, `generateText` with tools and multi-step calling): combines Sealed AI's own tools with the PayPal Agent Toolkit's tools. Actions that move money (sending an invoice, refunding) need two steps: a preview call, then a confirmed call after the user says yes.
+- **Money assistant** (`lib/agent.ts`, `generateText` with tools and multi-step calling): combines Sealed's own tools with the PayPal Agent Toolkit's tools. Actions that move money (sending an invoice, refunding) need two steps: a preview call, then a confirmed call after the user says yes.
 
-With no AI key set, or if the provider errors or a free-tier quota runs out, Sealed AI falls back to a rule-based planner and assistant, so the app never breaks mid-demo. The live AI path is what the demo shows.
+With no AI key set, or if the provider errors or a free-tier quota runs out, Sealed falls back to a rule-based planner and assistant, so the app never breaks mid-demo. The live AI path is what the demo shows.
 
 ## Run it locally
 
@@ -85,7 +85,7 @@ Open http://localhost:3000. The seed script prints a client portal link.
 
 ## Deploy
 
-`render.yaml` deploys Sealed AI to Render as a single web service. The demo start script seeds data only when the store is empty.
+`render.yaml` deploys Sealed to Render as a single web service. The demo start script seeds data only when the store is empty.
 
 ## Testing notes for judges
 
@@ -101,6 +101,10 @@ Open http://localhost:3000. The seed script prints a client portal link.
 - Delivered files are treated as untrusted: SVGs are sanitised (no scripts, event handlers, entities or external references) before rendering, originals are served with `Content-Security-Policy: sandbox` and `nosniff`, and anything that isn't an image downloads instead of opening.
 - Files are locked while a milestone is in review or paid; withdrawn files stay on record with their fingerprint.
 - Orders and captures use `PayPal-Request-Id` idempotency keys.
+
+## Brand
+
+The full brand kit is in [`brand/`](brand/): logo files (SVG, PNG, JPG), app icons, favicons, social images, UI icons, fonts, design tokens and the brand guidelines PDF. The mark, The Fold, is an envelope folded into a hexagon and closed with a seal: delivered, sealed, waiting for approval.
 
 ## Stack
 

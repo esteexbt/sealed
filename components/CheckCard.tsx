@@ -44,9 +44,9 @@ export function CheckCard({
       </ul>
       <p className="tiny muted check-foot">
         {check.by === "ai-vision"
-          ? "Checked by Sealed AI, looking at the files against the agreed deliverables."
+          ? "Checked by Sealed with AI, looking at the files against the agreed deliverables."
           : check.by === "ai-text"
-            ? "Checked by Sealed AI from file names, types and sizes."
+            ? "Checked by Sealed from file names, types and sizes."
             : "Checked against the agreed deliverables using file facts."}{" "}
         {audience === "client" ? "It's a guide, not a guarantee: you review the full work before your payment is released." : "Your client sees this check before they pay."}
       </p>

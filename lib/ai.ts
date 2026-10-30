@@ -28,7 +28,7 @@ export const modelLabel = {
 
 /**
  * Free AI tiers have daily limits. If the model errors (quota, outage),
- * Sealed AI keeps working on its built-in rules instead of failing the user.
+ * Sealed keeps working on its built-in rules instead of failing the user.
  */
 export async function withFallback<T>(label: string, live: () => Promise<T>, offline: () => T | Promise<T>): Promise<T> {
   try {

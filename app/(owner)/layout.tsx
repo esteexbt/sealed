@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { isOwner } from "@/lib/auth";
 import { paypalMode, aiMode } from "@/lib/config";
 import { Nav } from "@/components/Nav";
-import { Seal } from "@/components/Seal";
+import { Logo } from "@/components/Seal";
 import { DialogProvider } from "@/components/Dialog";
 
 export const dynamic = "force-dynamic";
@@ -13,9 +13,8 @@ export default async function OwnerLayout({ children }: { children: React.ReactN
   return (
     <DialogProvider>
       <header className="topbar">
-        <Link href="/" className="wordmark">
-          <Seal size={30} />
-          Sealed AI
+        <Link href="/" className="wordmark" aria-label="Sealed home">
+          <Logo height={30} />
         </Link>
         <Nav />
         <span className="mode-pill" title="Payment and AI mode">
