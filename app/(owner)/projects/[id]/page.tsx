@@ -145,6 +145,9 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
                     {m.payment.releasedBy === "auto" ? "Released automatically" : m.payment.authorizationId ? "Approved and released" : "Paid"}{" "}
                     {m.payment.capturedAt ? date(m.payment.capturedAt.slice(0, 10)) : ""} via PayPal
                     <span className="tiny muted">capture {m.payment.captureId}</span>
+                    {m.payment.captureStatus === "PENDING" && (
+                      <span className="tiny" style={{ color: "var(--warn)" }}>PayPal is still clearing this payment. It reaches your balance once cleared.</span>
+                    )}
                   </span>
                 )}
                 {m.reminders.length > 0 && m.status === "awaiting_payment" && (

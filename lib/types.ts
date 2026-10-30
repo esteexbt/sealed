@@ -70,6 +70,8 @@ export interface Payment {
   /** When the hold is released to the freelancer if the client does nothing. */
   reviewEndsAt?: string | null;
   captureId: string | null;
+  /** PayPal's status for the capture: COMPLETED, or PENDING while PayPal clears it. */
+  captureStatus?: string | null;
   amount: number;
   currency: string;
   payerEmail: string | null;

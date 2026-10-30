@@ -150,6 +150,7 @@ async function release(projectId: string, milestoneId: string, by: "client" | "a
     if (!m || !m.payment || m.status !== "in_review") return m;
     m.status = "paid";
     m.payment.captureId = cap.captureId;
+    m.payment.captureStatus = cap.status;
     m.payment.capturedAt = new Date().toISOString();
     m.payment.releasedBy = by;
     m.payment.releaseError = null;
