@@ -110,6 +110,8 @@ export interface Milestone {
   views?: ViewEvent[];
   /** When the freelancer last opened this milestone's notifications. */
   noticesSeenAt?: string | null;
+  /** When the client last opened this milestone's notifications. */
+  clientSeenAt?: string | null;
 }
 
 export interface Project {

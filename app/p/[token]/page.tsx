@@ -6,6 +6,8 @@ import { settleDue } from "@/lib/actions";
 import { isStale, refreshInBackground } from "@/lib/check";
 import { ensurePreviews, isImage, isPdf, isReviewable } from "@/lib/files";
 import { Portal, type PortalMilestone } from "./Portal";
+import { clientNotices, unread } from "@/lib/notify";
+import { money } from "@/lib/actions";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +28,7 @@ export default async function PortalPage({ params }: { params: Promise<{ token: 
   const milestones: PortalMilestone[] = p.milestones.map((m) => {
     if (isStale(m)) refreshInBackground(p.id, m);
     const openRequest = (m.changeRequests || []).filter((c) => !c.resolvedAt).at(-1) || null;
+    const updates = clientNotices(m, config.freelancerName, (n) => money(n, p.currency));
     return {
       id: m.id,
       title: m.title,
@@ -41,6 +44,8 @@ export default async function PortalPage({ params }: { params: Promise<{ token: 
       rounds: (m.changeRequests || []).length,
       check: m.check && !isStale(m) ? m.check : null,
       checkPending: isStale(m),
+      updates,
+      unreadIds: unread(updates, m.clientSeenAt).map((n) => n.id),
       files: currentFiles(m).map((f) => ({
         id: f.id,
         name: f.name,

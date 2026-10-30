@@ -8,23 +8,33 @@ import type { Notice } from "@/lib/notify";
 const fmt = (iso: string) =>
   new Date(iso).toLocaleString("en-US", { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 
-/** Bell on each milestone: counts what the client did since the freelancer last looked. */
+/**
+ * Bell on each milestone: counts what the other side did since you last looked.
+ * The freelancer sees the client's payments and change requests; the client sees
+ * deliveries, revisions and reminders.
+ */
 export function MilestoneBell({
-  projectId,
   milestoneId,
   milestoneTitle,
-  client,
+  from: client,
   items,
   unreadIds,
-  reviseBy,
+  reviseBy = null,
+  audience = "freelancer",
+  seenUrl,
+  seenBody,
 }: {
-  projectId: string;
   milestoneId: string;
   milestoneTitle: string;
-  client: string;
+  /** Who the updates come from. */
+  from: string;
   items: Notice[];
   unreadIds: string[];
-  reviseBy: string | null;
+  reviseBy?: string | null;
+  audience?: "freelancer" | "client";
+  /** Where to POST when the pop-up opens, to mark these as read. */
+  seenUrl: string;
+  seenBody?: Record<string, string>;
 }) {
   const [open, setOpen] = useState(false);
   // The ones that were new when the pop-up opened stay marked as new while it's open.
@@ -42,7 +52,10 @@ export function MilestoneBell({
   const show = () => {
     setFresh(new Set(unreadIds));
     setOpen(true);
-    if (count) fetch(`/api/projects/${projectId}/milestones/${milestoneId}/seen`, { method: "POST" }).then(() => router.refresh()).catch(() => {});
+    if (count)
+      fetch(seenUrl, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(seenBody || {}) })
+        .then(() => router.refresh())
+        .catch(() => {});
   };
   const showRef = useRef(show);
   showRef.current = show;
@@ -63,6 +76,7 @@ export function MilestoneBell({
           items={items}
           fresh={fresh}
           reviseBy={reviseBy}
+          audience={audience}
           onClose={() => setOpen(false)}
         />
       )}
@@ -76,6 +90,7 @@ function NoticeDialog({
   items,
   fresh,
   reviseBy,
+  audience,
   onClose,
 }: {
   title: string;
@@ -83,6 +98,7 @@ function NoticeDialog({
   items: Notice[];
   fresh: Set<string>;
   reviseBy: string | null;
+  audience: "freelancer" | "client";
   onClose: () => void;
 }) {
   useScrollLock();
@@ -93,7 +109,7 @@ function NoticeDialog({
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [onClose]);
-  const todo = items.some((n) => n.open);
+  const todo = audience === "freelancer" && items.some((n) => n.open);
 
   return (
     <div className="dlg-backdrop" onClick={onClose}>
@@ -109,7 +125,11 @@ function NoticeDialog({
         </div>
 
         {items.length === 0 ? (
-          <p className="dlg-body">Nothing yet. When {client} pays, asks for changes or approves, it shows up here.</p>
+          <p className="dlg-body">
+            {audience === "client"
+              ? `Nothing yet. When ${client} delivers files or sends a revision, it shows up here.`
+              : `Nothing yet. When ${client} pays, asks for changes or approves, it shows up here.`}
+          </p>
         ) : (
           <ol className="nt-list">
             {items.map((n) => (
@@ -122,7 +142,15 @@ function NoticeDialog({
                   </div>
                   <span className="tiny muted">{fmt(n.at)}</span>
                   {n.note && <blockquote className="nt-note">{n.note}</blockquote>}
-                  {n.kind === "changes" && (
+                  {n.files && n.files.length > 0 && (
+                    <ul className="nt-files">
+                      {n.files.slice(0, 8).map((f, i) => (
+                        <li key={i}>{f}</li>
+                      ))}
+                      {n.files.length > 8 && <li className="muted">and {n.files.length - 8} more</li>}
+                    </ul>
+                  )}
+                  {n.kind === "changes" && audience === "freelancer" && (
                     <span className={`nt-state ${n.open ? "nt-todo" : "nt-done"}`}>
                       {n.open
                         ? `To do${reviseBy ? `, revise by ${fmt(reviseBy)}` : ""}`
@@ -153,7 +181,7 @@ export function LiveRefresh({ every = 20000 }: { every?: number }) {
   const router = useRouter();
   useEffect(() => {
     const t = setInterval(() => {
-      if (!document.hidden && !document.querySelector(".dlg-backdrop")) router.refresh();
+      if (!document.hidden && !document.querySelector(".dlg-backdrop, .sv-backdrop")) router.refresh();
     }, every);
     const onVis = () => !document.hidden && router.refresh();
     document.addEventListener("visibilitychange", onVis);

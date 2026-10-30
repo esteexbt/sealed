@@ -7,6 +7,8 @@ import { SecureViewer } from "@/components/SecureViewer";
 import { CheckCard } from "@/components/CheckCard";
 import { ChangeRequestDialog } from "@/components/ChangeRequestDialog";
 import type { DeliveryCheck, MilestoneStatus } from "@/lib/types";
+import type { Notice } from "@/lib/notify";
+import { LiveRefresh, MilestoneBell } from "@/components/MilestoneBell";
 
 export interface PortalFile {
   id: string;
@@ -39,6 +41,8 @@ export interface PortalMilestone {
   check: DeliveryCheck | null;
   checkPending: boolean;
   files: PortalFile[];
+  updates: Notice[];
+  unreadIds: string[];
 }
 
 interface Props {
@@ -94,6 +98,7 @@ export function Portal(props: Props) {
 
   return (
     <div className="portal">
+      <LiveRefresh />
       <header className="portal-head">
         <p className="portal-from">
           <Seal size={26} monogram={props.freelancer.charAt(0)} />
@@ -198,6 +203,16 @@ function MilestoneBlock({
           <h2>{m.title}</h2>
           <p className="small muted">{m.description || m.deliverables.join(", ")}</p>
         </div>
+        <MilestoneBell
+          milestoneId={m.id}
+          milestoneTitle={m.title}
+          from={freelancer}
+          items={m.updates}
+          unreadIds={m.unreadIds}
+          audience="client"
+          seenUrl="/api/portal"
+          seenBody={{ token, milestoneId: m.id, action: "seen" }}
+        />
       </div>
 
       {m.status === "in_review" && !opening && (

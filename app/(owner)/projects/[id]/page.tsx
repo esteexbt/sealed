@@ -66,10 +66,10 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
                 <div className="ms-money">
                   <div className="ms-money-top">
                     <MilestoneBell
-                      projectId={p.id}
                       milestoneId={m.id}
                       milestoneTitle={m.title}
-                      client={p.clientName}
+                      from={p.clientName}
+                      seenUrl={`/api/projects/${p.id}/milestones/${m.id}/seen`}
                       items={updates}
                       unreadIds={fresh.map((n) => n.id)}
                       reviseBy={m.status === "changes_requested" ? m.reviseBy || null : null}
