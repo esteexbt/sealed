@@ -15,6 +15,9 @@ interface Session {
   code: string;
   original: { width: number; height: number };
   loupe: { left: number; size: number; sharper: boolean };
+  page: number;
+  pages: number;
+  kind: "image" | "pdf";
 }
 
 function unxor(buf: ArrayBuffer, keyB64: string) {
@@ -35,6 +38,7 @@ async function bitmapFrom(res: Response, key: string) {
  * inside this canvas, and is wiped when the viewer closes or the session ends.
  */
 export function SecureViewer({ token, fileId, fileName, onClose }: { token: string; fileId: string; fileName: string; onClose: () => void }) {
+  const [page, setPage] = useState(1);
   const canvas = useRef<HTMLCanvasElement>(null);
   const loupeCanvas = useRef<HTMLCanvasElement>(null);
   const sess = useRef<Session | null>(null);
@@ -60,7 +64,7 @@ export function SecureViewer({ token, fileId, fileName, onClose }: { token: stri
     setError("");
     setInspect(null);
     try {
-      const res = await fetch("/api/view", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token, fileId }) });
+      const res = await fetch("/api/view", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token, fileId, page }) });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "The preview couldn't open.");
       const s = json as Session;
@@ -85,7 +89,7 @@ export function SecureViewer({ token, fileId, fileName, onClose }: { token: stri
       setError((e as Error).message);
       setState("error");
     }
-  }, [token, fileId]);
+  }, [token, fileId, page]);
 
   useEffect(() => {
     open();
@@ -178,12 +182,29 @@ export function SecureViewer({ token, fileId, fileName, onClose }: { token: stri
             <p className="tiny muted">
               {!meta
                 ? "Opening a protected review copy…"
-                : meta.original.width > meta.w
+                : meta.kind === "pdf"
+                  ? `Page ${meta.page} of ${meta.pages}, rendered as a watermarked review copy. The PDF itself is released when you approve.`
+                  : meta.original.width > meta.w
                   ? `Review copy at ${meta.w}×${meta.h}. The ${meta.original.width}×${meta.original.height} original is released when you approve.`
                   : `Shown at full ${meta.w}×${meta.h} size with your watermark. The clean original is released when you approve.`}
             </p>
           </div>
-          <button type="button" className="btn btn-quiet" onClick={onClose}>Close</button>
+          <div className="row sv-tools">
+            {meta && meta.pages > 1 && (
+              <nav className="sv-pager" aria-label="Pages">
+                <button type="button" className="btn btn-ghost small" disabled={page <= 1 || state === "loading"} onClick={() => setPage((p) => p - 1)} aria-label="Previous page">
+                  ‹
+                </button>
+                <span className="small">
+                  {page} / {meta.pages}
+                </span>
+                <button type="button" className="btn btn-ghost small" disabled={page >= meta.pages || state === "loading"} onClick={() => setPage((p) => p + 1)} aria-label="Next page">
+                  ›
+                </button>
+              </nav>
+            )}
+            <button type="button" className="btn btn-quiet" onClick={onClose}>Close</button>
+          </div>
         </header>
 
         <div className="sv-body">

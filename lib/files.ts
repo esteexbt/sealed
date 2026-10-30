@@ -5,6 +5,7 @@ import path from "node:path";
 import sharp from "sharp";
 import { FILES_DIR, id } from "./db";
 import type { Deliverable } from "./types";
+import { isPdf, pdfPageCount, renderPdfPage } from "./pdf";
 
 const IMAGE = /^image\/(png|jpe?g|webp|gif|avif|tiff)$/;
 
@@ -37,14 +38,33 @@ export async function storeDeliverable(file: File): Promise<Deliverable> {
   let width: number | undefined;
   let height: number | undefined;
   let previewKey: string | null = null;
-  if (IMAGE.test(file.type)) {
+  let pages: number | undefined;
+  // PDFs: count pages and build the sealed tile from page 1.
+  let source: Buffer | null = null;
+  if (isPdf(file.type, file.name)) {
+    try {
+      pages = await pdfPageCount(buf);
+      source = await renderPdfPage(buf, 1, sha256);
+    } catch (e) {
+      console.warn("[files] PDF could not be rendered:", (e as Error).message);
+    }
+  }
+  if (source) {
+    previewKey = `${fid}-preview.jpg`;
+    const { data, info } = await sharp(source).resize({ width: 1100, height: 1100, fit: "inside" }).blur(9).toBuffer({ resolveWithObject: true });
+    await sharp(data)
+      .composite([{ input: watermarkSvg(info.width, info.height), top: 0, left: 0 }])
+      .jpeg({ quality: 62 })
+      .toFile(path.join(/*turbopackIgnore: true*/ FILES_DIR, previewKey));
+  } else if (IMAGE.test(file.type)) {
     const meta = await sharp(buf).metadata();
     // EXIF-rotated photos report swapped dimensions.
     const turned = (meta.orientation || 1) >= 5;
     width = turned ? meta.height : meta.width;
     height = turned ? meta.width : meta.height;
     previewKey = `${fid}-preview.jpg`;
-    const base = sharp(buf, { animated: false }).rotate().resize({ width: 1100, height: 1100, fit: "inside", withoutEnlargement: true });
+    // Transparent artwork sits on white, or JPEG would turn its background black.
+    const base = sharp(buf, { animated: false }).rotate().resize({ width: 1100, height: 1100, fit: "inside", withoutEnlargement: true }).flatten({ background: "#ffffff" });
     const { data, info } = await base.blur(9).toBuffer({ resolveWithObject: true });
     await sharp(data)
       .composite([{ input: watermarkSvg(info.width, info.height), top: 0, left: 0 }])
@@ -55,7 +75,7 @@ export async function storeDeliverable(file: File): Promise<Deliverable> {
   return {
     id: fid,
     name: file.name.slice(0, 160),
-    mime: file.type || "application/octet-stream",
+    mime: isPdf(file.type, file.name) ? "application/pdf" : file.type || "application/octet-stream",
     size: buf.length,
     originalKey,
     previewKey,
@@ -63,6 +83,7 @@ export async function storeDeliverable(file: File): Promise<Deliverable> {
     sha256,
     width,
     height,
+    pages,
     removedAt: null,
   };
 }
@@ -74,6 +95,17 @@ export function readStored(key: string) {
 
 
 export const isImage = (mime: string) => IMAGE.test(mime);
+export { isPdf };
+
+/** Files the client can open in the protected viewer. */
+export const isReviewable = (f: Pick<Deliverable, "mime" | "name">) => IMAGE.test(f.mime) || isPdf(f.mime, f.name);
+
+/** The pixels behind a review copy: the image itself, or a rendered PDF page. */
+export async function reviewSource(f: Deliverable, page = 1): Promise<Buffer> {
+  const buf = readStored(f.originalKey);
+  if (isPdf(f.mime, f.name)) return renderPdfPage(buf, page, f.sha256 || f.id);
+  return buf;
+}
 
 /** Backfills fingerprint and size for files stored before fingerprints existed. */
 export async function fileMeta(f: Deliverable): Promise<Pick<Deliverable, "sha256" | "width" | "height">> {

@@ -4,7 +4,7 @@ import { currentFiles, getProjectByToken } from "@/lib/db";
 import { config, paypalMode } from "@/lib/config";
 import { settleDue } from "@/lib/actions";
 import { isStale, refreshInBackground } from "@/lib/check";
-import { isImage } from "@/lib/files";
+import { isImage, isPdf, isReviewable } from "@/lib/files";
 import { Portal, type PortalMilestone } from "./Portal";
 
 export const dynamic = "force-dynamic";
@@ -44,6 +44,9 @@ export default async function PortalPage({ params }: { params: Promise<{ token: 
         name: f.name,
         hasPreview: Boolean(f.previewKey),
         image: isImage(f.mime),
+        pdf: isPdf(f.mime, f.name),
+        reviewable: isReviewable(f),
+        pages: f.pages || null,
         size: f.size,
         width: f.width || null,
         height: f.height || null,

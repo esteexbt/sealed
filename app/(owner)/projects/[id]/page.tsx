@@ -86,14 +86,14 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
                     <li key={f.id} className="file">
                       {f.previewKey ? (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={`/api/files/${f.id}?variant=full`} alt="" className="file-thumb" />
+                        <img src={`/api/files/${f.id}?variant=${f.mime === "application/pdf" ? "page" : "full"}`} alt="" className="file-thumb" />
                       ) : (
                         <span className="file-thumb file-generic">{f.name.split(".").pop()?.toUpperCase()}</span>
                       )}
                       <span className="file-meta">
                         <span className="file-name" title={f.name}>{f.name}</span>
                         <span className="tiny muted">
-                          {f.width ? `${f.width}×${f.height}, ` : ""}
+                          {f.pages ? `PDF, ${f.pages} page${f.pages === 1 ? "" : "s"}, ` : f.width ? `${f.width}×${f.height}, ` : ""}
                           {formatBytes(f.size)}
                         </span>
                         {f.sha256 && <span className="tiny muted" title={`SHA-256 ${f.sha256}`}>Fingerprint {f.sha256.slice(0, 10)}</span>}

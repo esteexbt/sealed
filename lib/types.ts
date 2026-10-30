@@ -27,6 +27,8 @@ export interface Deliverable {
   sha256?: string;
   width?: number;
   height?: number;
+  /** Page count for PDFs. */
+  pages?: number;
   /** Set when the freelancer withdraws a file before it is locked for review. */
   removedAt?: string | null;
 }

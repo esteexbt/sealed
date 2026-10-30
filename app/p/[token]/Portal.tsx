@@ -12,6 +12,9 @@ export interface PortalFile {
   name: string;
   hasPreview: boolean;
   image: boolean;
+  pdf: boolean;
+  reviewable: boolean;
+  pages: number | null;
   size: number;
   width: number | null;
   height: number | null;
@@ -223,7 +226,7 @@ function MilestoneBlock({
                 {f.hasPreview ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
-                    src={`/api/files/${f.id}?t=${token}&variant=${revealed ? "full" : "preview"}`}
+                    src={`/api/files/${f.id}?t=${token}&variant=${revealed ? (f.pdf ? "page" : "full") : "preview"}`}
                     alt={revealed ? f.name : `${f.name}, sealed preview`}
                     className={revealed ? "pm-img pm-img-full" : "pm-img"}
                     draggable={false}
@@ -237,7 +240,7 @@ function MilestoneBlock({
                     <Seal size={64} broken={opening} />
                   </span>
                 )}
-                {reviewing && !opening && f.image && (
+                {reviewing && !opening && f.reviewable && (
                   <button type="button" className="pm-review" onClick={() => onView(f)}>
                     Review full work
                   </button>
@@ -248,7 +251,9 @@ function MilestoneBlock({
                 {revealed ? (
                   <a className="pm-dl" href={`/api/files/${f.id}?t=${token}&variant=full&download=1`}>Download</a>
                 ) : (
-                  <span className="tiny muted">{f.width ? `${f.width}×${f.height}` : `${Math.max(1, Math.round(f.size / 1024))} KB`}</span>
+                  <span className="tiny muted">
+                    {f.pdf ? `PDF, ${f.pages || 1} page${(f.pages || 1) === 1 ? "" : "s"}` : f.width ? `${f.width}×${f.height}` : `${Math.max(1, Math.round(f.size / 1024))} KB`}
+                  </span>
                 )}
               </div>
               {f.sha256 && <span className="pm-hash tiny muted" title={`SHA-256 ${f.sha256}`}>Fingerprint {f.sha256.slice(0, 10)}</span>}

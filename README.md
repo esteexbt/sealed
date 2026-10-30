@@ -15,7 +15,7 @@ Freelancers routinely deliver work and then wait weeks to get paid, or never get
 1. **Brief to plan (AI).** Paste a DM, email or call notes. The scoping agent splits the work into 2–5 milestones, each ending in something the client can see. It prices them (fitting a stated budget), dates them against the client's deadline, and lists the questions worth asking first. Every field stays editable.
 2. **Deliver and get checked (AI).** The freelancer uploads each stage's files. Each file is fingerprinted (SHA-256) and measured. A delivery check compares the files against the agreed deliverables: rules prove the facts (counts, formats, sizes, duplicates), and Gemini looks at the images to judge whether they match and look finished. Both sides see the same check before any money moves.
 3. **Pay into a PayPal hold.** The client sees sealed previews and the check, then pays with PayPal Checkout using `intent: AUTHORIZE`. PayPal reserves the money on the client's account; it is not sent to the freelancer yet. Sealed AI verifies the authorization (status, `custom_id`, amount, currency) on the server before anything changes.
-4. **Review the full work, protected.** While the money is held, the client opens a protected review copy of each image and can inspect any spot at full original resolution. The original file never leaves the server.
+4. **Review the full work, protected.** While the money is held, the client opens a protected review copy of each image or PDF page and can inspect any spot at full original resolution. PDFs are rendered page by page on the server (pdf.js), so the PDF file itself never reaches the client before approval either. The original file never leaves the server.
 5. **Approve, or ask for changes.**
    - **Approve** captures the authorization: the freelancer is paid, the seal cracks, and the originals unlock for download.
    - **Request changes** keeps the money held and locks in a 3-day revision deadline. The freelancer uploads a revision, which is checked again and opens a fresh review window.
@@ -34,7 +34,7 @@ Freelancers routinely deliver work and then wait weeks to get paid, or never get
 
 ## How the review copy is protected
 
-What is guaranteed: **the original file is never sent to the client's browser until the hold is captured.** No download manager, extension or "save as" can reach it before then.
+What is guaranteed: **the original file (image or PDF) is never sent to the client's browser until the hold is captured.** No download manager, extension or "save as" can reach it before then.
 
 What is made hard:
 - The review copy is built for each viewing session and carries the viewer's name, email, time and a session code across the whole image, so any capture is traceable.

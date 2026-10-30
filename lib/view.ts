@@ -2,7 +2,7 @@ import "server-only";
 import crypto from "node:crypto";
 import sharp from "sharp";
 import { currentFiles, findMilestone, id, log, mutate, read } from "./db";
-import { readStored, isImage } from "./files";
+import { isPdf, isReviewable, reviewSource } from "./files";
 
 /**
  * Protected review copies.
@@ -37,6 +37,7 @@ interface Session {
   origH: number;
   loupesLeft: number;
   viewId: string;
+  page: number;
 }
 
 const g = globalThis as unknown as { __sealedViews?: Map<string, Session> };
@@ -96,7 +97,7 @@ function shuffle(n: number) {
   return a;
 }
 
-export async function openView(portalToken: string, fileId: string) {
+export async function openView(portalToken: string, fileId: string, pageArg = 1) {
   sweep();
   const s = read();
   const project = s.projects.find((p) => p.portalToken === portalToken);
@@ -112,14 +113,22 @@ export async function openView(portalToken: string, fileId: string) {
       403,
     );
   }
-  if (!isImage(file.mime)) throw new ViewError("Only images have a review copy. Other files open after you approve.", 415);
+  if (!isReviewable(file)) throw new ViewError("This file type has no review copy. It opens after you approve.", 415);
+  const pdf = isPdf(file.mime, file.name);
+  const pages = pdf ? Math.max(1, file.pages || 1) : 1;
+  const page = Math.min(pages, Math.max(1, Math.floor(Number(pageArg) || 1)));
 
   const sid = crypto.randomBytes(12).toString("base64url");
   const code = sid.slice(0, 6).toUpperCase();
   const stamp = new Date().toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: "UTC" }) + " UTC";
-  const label = `Review copy · ${project.clientName}${project.clientEmail ? ` · ${project.clientEmail}` : ""} · ${stamp} · ${code}`;
+  const label = `Review copy${pdf ? ` p.${page}` : ""} · ${project.clientName}${project.clientEmail ? ` · ${project.clientEmail}` : ""} · ${stamp} · ${code}`;
 
-  const original = readStored(file.originalKey);
+  let original: Buffer;
+  try {
+    original = await reviewSource(file, page);
+  } catch {
+    throw new ViewError("This page couldn't be rendered for review.", 422);
+  }
   const meta = await sharp(original).rotate().toBuffer({ resolveWithObject: true });
   const origW = meta.info.width;
   const origH = meta.info.height;
@@ -174,13 +183,15 @@ export async function openView(portalToken: string, fileId: string) {
     origH,
     loupesLeft: LOUPES_PER_SESSION,
     viewId,
+    page,
   });
 
   await mutate((st) => {
     const { milestone: m } = findMilestone(st, project.id, milestone.id);
     if (!m) return;
-    m.views = [...(m.views || []), { id: viewId, at: new Date().toISOString(), fileId, fileName: file.name, inspections: 0 }].slice(-200);
-    log(st, { projectId: project.id, milestoneId: m.id, kind: "viewed", text: `${project.clientName} opened the review copy of ${file.name}` });
+    const fileName = pdf ? `${file.name}, page ${page}` : file.name;
+    m.views = [...(m.views || []), { id: viewId, at: new Date().toISOString(), fileId, fileName, inspections: 0 }].slice(-200);
+    log(st, { projectId: project.id, milestoneId: m.id, kind: "viewed", text: `${project.clientName} opened the review copy of ${fileName}` });
   });
 
   return {
@@ -197,6 +208,9 @@ export async function openView(portalToken: string, fileId: string) {
     expiresAt: Date.now() + SESSION_MS,
     code,
     original: { width: origW, height: origH },
+    page,
+    pages,
+    kind: pdf ? ("pdf" as const) : ("image" as const),
     loupe: { left: LOUPES_PER_SESSION, size: LOUPE, sharper: origW > w || origH > h },
   };
 }
@@ -236,7 +250,7 @@ export async function loupe(sid: string, req: Request, nx: number, ny: number) {
   const size = Math.min(LOUPE, s.origW, s.origH);
   const left = Math.max(0, Math.min(s.origW - size, Math.round(nx * s.origW - size / 2)));
   const top = Math.max(0, Math.min(s.origH - size, Math.round(ny * s.origH - size / 2)));
-  const crop = await sharp(readStored(file.originalKey))
+  const crop = await sharp(await reviewSource(file, s.page))
     .rotate()
     .extract({ left, top, width: size, height: size })
     .flatten({ background: "#ffffff" })

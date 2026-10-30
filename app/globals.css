@@ -422,3 +422,7 @@ p { margin: 0; }
 .toast-item-error { background: var(--wax); }
 .toast-item button { background: none; border: 0; color: inherit; font-size: 1.2rem; line-height: 1; cursor: pointer; opacity: .7; padding: 2px 6px; }
 .toast-item button:hover { opacity: 1; }
+.sv-tools { flex-wrap: nowrap; }
+.sv-pager { display: flex; align-items: center; gap: 8px; }
+.sv-pager .btn { min-width: 36px; padding: 6px 10px; font-size: 1.1rem; line-height: 1; }
+.sv-pager span { font-variant-numeric: tabular-nums; min-width: 44px; text-align: center; }
