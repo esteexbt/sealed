@@ -200,7 +200,7 @@ p { margin: 0; }
 .plan-total { font-size: 1.4rem; font-family: var(--serif); font-weight: 400; }
 
 /* ------------------------------ project ------------------------------ */
-.proj { display: grid; gap: 32px; max-width: 900px; }
+.proj { display: grid; gap: 32px; max-width: 1160px; }
 .proj-head { display: grid; gap: 12px; }
 .back { text-decoration: none; }
 .back:hover { color: var(--ink); }
@@ -214,7 +214,7 @@ p { margin: 0; }
 .ms-empty { padding-left: 42px; }
 .ms-actions { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; padding-left: 42px; }
 @media (max-width: 560px) { .ms-empty, .ms-actions { padding-left: 0; } .ms-top { grid-template-columns: 24px 1fr; } .ms-money { grid-column: 2; justify-items: start; } }
-.files { list-style: none; margin: 0; padding: 0 0 0 42px; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+.files { list-style: none; margin: 0; padding: 0 0 0 42px; display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 14px; }
 @media (max-width: 560px) { .files { padding-left: 0; } }
 .file { display: grid; gap: 6px; min-width: 0; }
 .file-thumb { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: var(--r-s); background: var(--paper); border: 1px solid var(--rule); }
