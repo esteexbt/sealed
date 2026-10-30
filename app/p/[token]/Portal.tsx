@@ -247,16 +247,23 @@ function MilestoneBlock({
                   </button>
                 )}
               </div>
-              <div className="pm-file-meta">
-                <span className="pm-file-name" title={f.name}>{f.name}</span>
-                {revealed ? (
-                  <a className="pm-dl" href={`/api/files/${f.id}?t=${token}&variant=full&download=1`}>Download</a>
-                ) : (
-                  <span className="tiny muted">
-                    {f.pdf ? `PDF, ${f.pages || 1} page${(f.pages || 1) === 1 ? "" : "s"}` : f.svg ? "SVG vector" : f.width ? `${f.width}×${f.height}` : `${Math.max(1, Math.round(f.size / 1024))} KB`}
+              {revealed ? (
+                <a className="pm-dl" href={`/api/files/${f.id}?t=${token}&variant=full&download=1`} download={f.name}>
+                  <span className="pm-dl-text">
+                    <span className="pm-file-name" title={f.name}>{f.name}</span>
+                    <span className="tiny muted">{fileKind(f)} · {formatSize(f.size)}</span>
                   </span>
-                )}
-              </div>
+                  <span className="pm-dl-icon" aria-hidden>
+                    <DownloadIcon />
+                  </span>
+                  <span className="sr-only">Download</span>
+                </a>
+              ) : (
+                <div className="pm-file-meta">
+                  <span className="pm-file-name" title={f.name}>{f.name}</span>
+                  <span className="tiny muted">{fileKind(f)}</span>
+                </div>
+              )}
               {f.sha256 && <span className="pm-hash tiny muted" title={`SHA-256 ${f.sha256}`}>Fingerprint {f.sha256.slice(0, 10)}</span>}
             </li>
           ))}
@@ -307,7 +314,16 @@ function MilestoneBlock({
             {busy === "cancel" ? "Cancelling…" : "Cancel and release my hold"}
           </button>
         )}
-        {(m.status === "paid" || opening) && <span className="status status-paid">Unlocked</span>}
+        {(m.status === "paid" || opening) && (
+          <div className="pm-unlocked">
+            <span className="status status-paid">Unlocked</span>
+            {m.status === "paid" && m.files.length > 1 && (
+              <a className="btn btn-paid" href={`/api/download?t=${token}&m=${m.id}`} download>
+                <DownloadIcon /> Download all {m.files.length} files
+              </a>
+            )}
+          </div>
+        )}
       </div>
 
       {asking && m.status === "in_review" && (
@@ -426,5 +442,24 @@ function PayButton({
       </button>
       {error && <p className="error small" role="alert">{error}</p>}
     </div>
+  );
+}
+
+function fileKind(f: PortalFile) {
+  if (f.pdf) return `PDF · ${f.pages || 1} page${(f.pages || 1) === 1 ? "" : "s"}`;
+  if (f.svg) return "SVG vector";
+  const ext = f.name.split(".").pop()?.toUpperCase() || "File";
+  return f.width ? `${ext} · ${f.width}×${f.height}` : ext;
+}
+
+function formatSize(n: number) {
+  return n < 1024 * 1024 ? `${Math.max(1, Math.round(n / 1024))} KB` : `${(n / 1024 / 1024).toFixed(1)} MB`;
+}
+
+function DownloadIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M8 2.5v8M4.5 7 8 10.5 11.5 7M3 13.5h10" />
+    </svg>
   );
 }

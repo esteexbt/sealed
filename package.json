@@ -22,6 +22,7 @@
     "ag-grid-community": "^36.2.0",
     "ag-grid-react": "^36.2.0",
     "ai": "^4.3.19",
+    "jszip": "^3.10.2",
     "nanoid": "^6.0.2",
     "next": "^16.4.3",
     "pdfjs-dist": "^4.10.38",
