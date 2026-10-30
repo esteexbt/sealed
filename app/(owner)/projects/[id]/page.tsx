@@ -6,6 +6,8 @@ import { isStale, refreshInBackground } from "@/lib/check";
 import { formatBytes, statusLabel, when } from "@/lib/format";
 import { ensurePreviews } from "@/lib/files";
 import { CheckCard } from "@/components/CheckCard";
+import { notices, unread } from "@/lib/notify";
+import { LiveRefresh, MilestoneBell } from "@/components/MilestoneBell";
 import { CopyLink, MilestoneAction, RemindButton, RemoveFile, UploadFiles } from "@/components/ProjectControls";
 
 const date = (d: string) => new Date(d + (d.length === 10 ? "T12:00:00Z" : "")).toLocaleDateString("en-US", { month: "short", day: "numeric" });
@@ -24,6 +26,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
 
   return (
     <div className="proj">
+      <LiveRefresh />
       <header className="proj-head">
         <Link href="/" className="tiny muted back">All projects</Link>
         <h1>{p.title}</h1>
@@ -50,6 +53,8 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
           const views = m.views || [];
           const inspections = views.reduce((a, v) => a + v.inspections, 0);
           const statusClass = late ? "overdue" : m.status;
+          const updates = notices(m, p.clientName, (n) => money(n, p.currency));
+          const fresh = unread(updates, m.noticesSeenAt);
           return (
             <li key={m.id} className={`ms sheet ms-${m.status}`}>
               <div className="ms-top">
@@ -59,7 +64,18 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
                   <p className="small muted">{m.deliverables.join(", ")}</p>
                 </div>
                 <div className="ms-money">
-                  <span className="amount">{money(m.amount, p.currency)}</span>
+                  <div className="ms-money-top">
+                    <MilestoneBell
+                      projectId={p.id}
+                      milestoneId={m.id}
+                      milestoneTitle={m.title}
+                      client={p.clientName}
+                      items={updates}
+                      unreadIds={fresh.map((n) => n.id)}
+                      reviseBy={m.status === "changes_requested" ? m.reviseBy || null : null}
+                    />
+                    <span className="amount">{money(m.amount, p.currency)}</span>
+                  </div>
                   <span className={`status status-${statusClass}`}>{statusLabel(m.status, late)}</span>
                   <span className="tiny muted">Due {date(m.dueDate)}</span>
                 </div>

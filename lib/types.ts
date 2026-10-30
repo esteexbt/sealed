@@ -108,6 +108,8 @@ export interface Milestone {
   /** Deadline for the freelancer to send a revision after changes were requested. */
   reviseBy?: string | null;
   views?: ViewEvent[];
+  /** When the freelancer last opened this milestone's notifications. */
+  noticesSeenAt?: string | null;
 }
 
 export interface Project {
