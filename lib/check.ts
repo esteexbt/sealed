@@ -235,8 +235,19 @@ export async function runCheck(projectId: string, milestoneId: string): Promise<
 
   const items: CheckItem[] = [...(ai?.items || [])];
   // Rule findings are facts; keep the ones the AI didn't already cover.
+  const norm = (t: string) => t.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  const aiLabels = new Set(items.map((i) => norm(i.label)));
   for (const r of rules) {
-    if (!items.some((i) => i.label === r.label && i.status === r.status)) items.push(r);
+    if (items.some((i) => i.label === r.label && i.status === r.status)) continue;
+    // A grouped count ("Concept 1 PNG … Concept 3 PNG") is redundant when the AI already
+    // judged every item in that group and agrees on the outcome.
+    if (r.label.includes(" … ") && ai) {
+      const group = milestone.deliverables.filter((d) => /\b(png|jpe?g|webp)\b/i.test(d));
+      const covered = group.every((d) => aiLabels.has(norm(d)));
+      const aiFlagged = items.some((i) => group.some((d) => norm(d) === norm(i.label)) && i.status !== "met");
+      if (covered && (r.status === "met") === !aiFlagged) continue;
+    }
+    items.push(r);
   }
   if (ai && !ai.looksFinished) items.unshift({ label: "Finish", status: "partial", note: "Some of the work looks unfinished or like a placeholder. Look closely in the review." });
   if (!items.length) items.push({ label: "Files", status: "met", note: `${files.length} file${files.length === 1 ? "" : "s"} delivered.` });
