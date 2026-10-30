@@ -20,8 +20,8 @@ import { isPdf, isReviewable, reviewSource } from "./files";
 
 const B = 32; // block size; a multiple of 16 keeps JPEG blocks from bleeding across the shuffle
 const REVIEW_EDGE = 1600; // longest side of the review copy
-const LOUPE = 300; // loupe crop size at native resolution
-const LOUPES_PER_SESSION = 40;
+const TILE = 640; // zoom tile size at native resolution
+const TILES_PER_SESSION = 160; // a glide loads a tile each time it leaves the last one
 const SESSION_MS = 10 * 60 * 1000;
 
 interface Session {
@@ -181,7 +181,7 @@ export async function openView(portalToken: string, fileId: string, pageArg = 1)
     exp: Date.now() + SESSION_MS,
     origW,
     origH,
-    loupesLeft: LOUPES_PER_SESSION,
+    loupesLeft: TILES_PER_SESSION,
     viewId,
     page,
   });
@@ -211,7 +211,7 @@ export async function openView(portalToken: string, fileId: string, pageArg = 1)
     page,
     pages,
     kind: pdf ? ("pdf" as const) : ("image" as const),
-    loupe: { left: LOUPES_PER_SESSION, size: LOUPE, sharper: origW > w || origH > h },
+    loupe: { left: TILES_PER_SESSION, size: TILE, sharper: origW > w || origH > h },
   };
 }
 
@@ -234,12 +234,16 @@ export function takeMosaic(sid: string, req: Request) {
   return out;
 }
 
-/** A small crop at native resolution so the client can judge sharpness. */
-export async function loupe(sid: string, req: Request, nx: number, ny: number) {
+/**
+ * A tile of the original at native resolution, around a point, for the zoom lens.
+ * Watermarked like the review copy and limited per session, so the whole
+ * original can't be rebuilt from tiles in one sitting without leaving a trace.
+ */
+export async function loupe(sid: string, req: Request, nx: number, ny: number, fresh = false) {
   const sess = sessions.get(sid);
   checkRequest(sess, req);
   const s = sess!;
-  if (s.loupesLeft <= 0) throw new ViewError("No close-up inspections left in this session. Reopen the preview for more.", 429);
+  if (s.loupesLeft <= 0) throw new ViewError("Zoom limit reached for this session. Reopen the preview to keep zooming.", 429);
   if (!Number.isFinite(nx) || !Number.isFinite(ny)) throw new ViewError("Bad position");
 
   const { project, milestone } = findMilestone(read(), s.projectId, s.milestoneId);
@@ -247,24 +251,28 @@ export async function loupe(sid: string, req: Request, nx: number, ny: number) {
   if (!project || !milestone || !file || (milestone.status !== "in_review" && milestone.status !== "changes_requested")) {
     throw new ViewError("This preview is closed.", 403);
   }
-  const size = Math.min(LOUPE, s.origW, s.origH);
-  const left = Math.max(0, Math.min(s.origW - size, Math.round(nx * s.origW - size / 2)));
-  const top = Math.max(0, Math.min(s.origH - size, Math.round(ny * s.origH - size / 2)));
+  const tw = Math.min(TILE, s.origW);
+  const th = Math.min(TILE, s.origH);
+  const left = Math.max(0, Math.min(s.origW - tw, Math.round(nx * s.origW - tw / 2)));
+  const top = Math.max(0, Math.min(s.origH - th, Math.round(ny * s.origH - th / 2)));
   const crop = await sharp(await reviewSource(file, s.page))
     .rotate()
-    .extract({ left, top, width: size, height: size })
+    .extract({ left, top, width: tw, height: th })
     .flatten({ background: "#ffffff" })
     .toBuffer();
   const jpeg = await sharp(crop)
-    .composite([{ input: forensicSvg(size, size, s.label, 2.2) }])
+    .composite([{ input: forensicSvg(tw, th, s.label, 1.6) }])
     .jpeg({ quality: 88 })
     .toBuffer();
   s.loupesLeft -= 1;
 
-  await mutate((st) => {
-    const { milestone: m } = findMilestone(st, s.projectId, s.milestoneId);
-    const v = m?.views?.find((x) => x.id === s.viewId);
-    if (v) v.inspections += 1;
-  });
-  return { bytes: xor(jpeg, s.key), left: s.loupesLeft };
+  // One "close-up" per press, however many tiles the glide loads.
+  if (fresh) {
+    await mutate((st) => {
+      const { milestone: m } = findMilestone(st, s.projectId, s.milestoneId);
+      const v = m?.views?.find((x) => x.id === s.viewId);
+      if (v) v.inspections += 1;
+    });
+  }
+  return { bytes: xor(jpeg, s.key), left: s.loupesLeft, rect: { left, top, width: tw, height: th } };
 }

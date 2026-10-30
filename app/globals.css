@@ -426,3 +426,18 @@ p { margin: 0; }
 .sv-pager { display: flex; align-items: center; gap: 8px; }
 .sv-pager .btn { min-width: 36px; padding: 6px 10px; font-size: 1.1rem; line-height: 1; }
 .sv-pager span { font-variant-numeric: tabular-nums; min-width: 44px; text-align: center; }
+
+/* ------------------------------ zoom lens ------------------------------ */
+.sv-shield { cursor: zoom-in; touch-action: none; }
+.sv-shield.sv-zooming { cursor: none; }
+.sv-lens { position: absolute; border-radius: 50%; pointer-events: none; z-index: 3; box-shadow: 0 0 0 3px #fff, 0 0 0 4px rgba(26, 34, 56, .35), 0 18px 40px -8px rgba(15, 20, 34, .55); background: #fff; }
+.sv-lens:not(.sv-lens-sharp) { box-shadow: 0 0 0 3px #fff, 0 0 0 4px #c9a227, 0 18px 40px -8px rgba(15, 20, 34, .55); }
+.sv-hidden .sv-lens { filter: blur(28px); }
+.sv-howto { display: grid; grid-template-columns: 40px 1fr; gap: 12px; align-items: start; padding: 14px; border-radius: var(--r-s); background: var(--paper); }
+.sv-howto-icon { width: 40px; height: 40px; border-radius: 50%; border: 3px solid var(--ink); position: relative; }
+.sv-howto-icon::after { content: ""; position: absolute; width: 14px; height: 4px; background: var(--ink); border-radius: 2px; right: -12px; bottom: -6px; transform: rotate(45deg); }
+.sv-stage { overscroll-behavior: contain; }
+.sv { overscroll-behavior: contain; }
+.dlg-wide { width: min(540px, 100%); }
+.cr-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.cr-chips .chip { font-size: 0.8rem; padding: 5px 11px; }

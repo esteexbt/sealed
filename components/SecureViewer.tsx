@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useScrollLock } from "./useScrollLock";
 
 interface Session {
   sid: string;
@@ -27,6 +28,17 @@ function unxor(buf: ArrayBuffer, keyB64: string) {
   return out;
 }
 
+interface Tile {
+  bmp: ImageBitmap;
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+}
+
+const LENS = 240; // lens diameter in CSS px
+const LENS_ZOOM = 2.6; // magnification relative to the displayed review copy
+
 async function bitmapFrom(res: Response, key: string) {
   const bytes = unxor(await res.arrayBuffer(), key);
   return createImageBitmap(new Blob([bytes], { type: "image/jpeg" }));
@@ -40,18 +52,25 @@ async function bitmapFrom(res: Response, key: string) {
 export function SecureViewer({ token, fileId, fileName, onClose }: { token: string; fileId: string; fileName: string; onClose: () => void }) {
   const [page, setPage] = useState(1);
   const canvas = useRef<HTMLCanvasElement>(null);
-  const loupeCanvas = useRef<HTMLCanvasElement>(null);
+  const lensCanvas = useRef<HTMLCanvasElement>(null);
+  const tile = useRef<Tile | null>(null);
+  const inflight = useRef(false);
+  const pressFresh = useRef(false);
+  const pointer = useRef<{ nx: number; ny: number } | null>(null);
   const sess = useRef<Session | null>(null);
   const [state, setState] = useState<"loading" | "ready" | "expired" | "error">("loading");
   const [error, setError] = useState("");
   const [hidden, setHidden] = useState(false);
   const [left, setLeft] = useState(0);
   const [remaining, setRemaining] = useState(0);
-  const [inspect, setInspect] = useState<{ x: number; y: number; busy: boolean } | null>(null);
+  const [lens, setLens] = useState<{ x: number; y: number; touch: boolean; w: number; h: number } | null>(null);
+  const [sharp, setSharp] = useState(false);
   const [meta, setMeta] = useState<Session | null>(null);
 
   const wipe = useCallback(() => {
-    for (const c of [canvas.current, loupeCanvas.current]) {
+    tile.current?.bmp.close();
+    tile.current = null;
+    for (const c of [canvas.current, lensCanvas.current]) {
       if (!c) continue;
       c.getContext("2d")?.clearRect(0, 0, c.width, c.height);
       c.width = 1;
@@ -62,7 +81,9 @@ export function SecureViewer({ token, fileId, fileName, onClose }: { token: stri
   const open = useCallback(async () => {
     setState("loading");
     setError("");
-    setInspect(null);
+    setLens(null);
+    tile.current?.bmp.close();
+    tile.current = null;
     try {
       const res = await fetch("/api/view", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token, fileId, page }) });
       const json = await res.json();
@@ -95,6 +116,8 @@ export function SecureViewer({ token, fileId, fileName, onClose }: { token: stri
     open();
     return wipe;
   }, [open, wipe]);
+
+  useScrollLock();
 
   // Session countdown; the canvas is wiped when it ends.
   useEffect(() => {
@@ -140,28 +163,123 @@ export function SecureViewer({ token, fileId, fileName, onClose }: { token: stri
     };
   }, [onClose]);
 
-  async function zoom(e: React.MouseEvent<HTMLDivElement>) {
+  /** Draws the lens: crisp from a native tile when one covers the spot, else from the review copy. */
+  const drawLens = useCallback(() => {
     const s = sess.current;
-    if (!s || state !== "ready" || left <= 0 || inspect?.busy) return;
-    const r = e.currentTarget.getBoundingClientRect();
-    const x = (e.clientX - r.left) / r.width;
-    const y = (e.clientY - r.top) / r.height;
-    setInspect({ x, y, busy: true });
+    const p = pointer.current;
+    const c = lensCanvas.current;
+    const main = canvas.current;
+    if (!s || !p || !c || !main) return;
+    const dpr = window.devicePixelRatio || 1;
+    const px = Math.round(LENS * dpr);
+    if (c.width !== px) {
+      c.width = px;
+      c.height = px;
+    }
+    const ctx = c.getContext("2d")!;
+    ctx.imageSmoothingQuality = "high";
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(0, 0, px, px);
+
+    const shown = main.getBoundingClientRect();
+    // Native pixels covered by the lens at this zoom.
+    const nativePerCss = s.original.width / (shown.width * LENS_ZOOM);
+    const span = LENS * nativePerCss;
+    const cx = p.nx * s.original.width;
+    const cy = p.ny * s.original.height;
+    const sx = cx - span / 2;
+    const sy = cy - span / 2;
+
+    // Review copy first (instant), then the sharp native tile over whatever part it covers.
+    const k = s.w / s.original.width;
+    ctx.drawImage(main, sx * k, sy * k, span * k, span * k, 0, 0, px, px);
+    const t = tile.current;
+    let covered = false;
+    if (t) {
+      const ix0 = Math.max(sx, t.left);
+      const iy0 = Math.max(sy, t.top);
+      const ix1 = Math.min(sx + span, t.left + t.width);
+      const iy1 = Math.min(sy + span, t.top + t.height);
+      if (ix1 > ix0 && iy1 > iy0) {
+        const f = px / span;
+        ctx.drawImage(t.bmp, ix0 - t.left, iy0 - t.top, ix1 - ix0, iy1 - iy0, (ix0 - sx) * f, (iy0 - sy) * f, (ix1 - ix0) * f, (iy1 - iy0) * f);
+      }
+      covered = ix0 === sx && iy0 === sy && ix1 === sx + span && iy1 === sy + span;
+    }
+    setSharp(Boolean(covered));
+    return covered;
+  }, []);
+
+  const fetchTile = useCallback(async () => {
+    const s = sess.current;
+    const p = pointer.current;
+    if (!s || !p || inflight.current || left <= 0) return;
+    inflight.current = true;
+    const fresh = pressFresh.current;
+    pressFresh.current = false;
     try {
-      const res = await fetch(`/api/view/${s.sid}/loupe?x=${x.toFixed(4)}&y=${y.toFixed(4)}`, { headers: { "x-sealed-view": s.sid }, cache: "no-store" });
+      const res = await fetch(`/api/view/${s.sid}/loupe?x=${p.nx.toFixed(4)}&y=${p.ny.toFixed(4)}${fresh ? "&fresh=1" : ""}`, {
+        headers: { "x-sealed-view": s.sid },
+        cache: "no-store",
+      });
       if (!res.ok) throw new Error(await res.text());
       setLeft(Number(res.headers.get("X-Loupes-Left") || 0));
+      const [l, t, w, h] = (res.headers.get("X-Tile") || "0,0,0,0").split(",").map(Number);
       const bmp = await bitmapFrom(res, s.key);
-      const c = loupeCanvas.current!;
-      c.width = bmp.width;
-      c.height = bmp.height;
-      c.getContext("2d")!.drawImage(bmp, 0, 0);
-      bmp.close();
-      setInspect({ x, y, busy: false });
+      tile.current?.bmp.close();
+      tile.current = { bmp, left: l, top: t, width: w, height: h };
     } catch (err) {
       setError((err as Error).message);
-      setInspect(null);
+    } finally {
+      inflight.current = false;
     }
+    // The pointer may have moved on while this loaded.
+    if (pointer.current && !drawLens()) fetchTile();
+  }, [drawLens, left]);
+
+  function track(e: React.PointerEvent<HTMLDivElement>) {
+    const main = canvas.current;
+    const stage = e.currentTarget.getBoundingClientRect();
+    if (!main) return;
+    const r = main.getBoundingClientRect();
+    const nx = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width));
+    const ny = Math.min(1, Math.max(0, (e.clientY - r.top) / r.height));
+    pointer.current = { nx, ny };
+    setLens({ x: e.clientX - stage.left, y: e.clientY - stage.top, touch: e.pointerType !== "mouse", w: stage.width, h: stage.height });
+    if (!drawLens()) fetchTile();
+  }
+
+  function press(e: React.PointerEvent<HTMLDivElement>) {
+    if (state !== "ready" || hidden || (e.pointerType === "mouse" && e.button !== 0)) return;
+    const r = canvas.current?.getBoundingClientRect();
+    if (!r || e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) return;
+    e.preventDefault();
+    e.currentTarget.setPointerCapture(e.pointerId);
+    pressFresh.current = true;
+    track(e);
+  }
+
+  /** Where the lens sits: centred on a mouse; on touch, clear of the finger and inside the stage. */
+  function lensBox(l: { x: number; y: number; touch: boolean; w: number; h: number }) {
+    const size = Math.min(LENS, Math.round(l.w * 0.6));
+    const clamp = (v: number, max: number) => Math.max(4, Math.min(max - size - 4, v));
+    let left = l.x - size / 2;
+    let top = l.y - size / 2;
+    if (l.touch) {
+      const gap = 28;
+      if (l.y - size - gap >= 4) top = l.y - size - gap;
+      else {
+        // No room above the finger: sit beside it instead.
+        top = l.y - size / 2;
+        left = l.x + gap + size <= l.w ? l.x + gap : l.x - gap - size;
+      }
+    }
+    return { width: size, height: size, left: clamp(left, l.w), top: clamp(top, l.h) };
+  }
+
+  function release() {
+    pointer.current = null;
+    setLens(null);
   }
 
   const mins = Math.floor(remaining / 60000);
@@ -211,8 +329,20 @@ export function SecureViewer({ token, fileId, fileName, onClose }: { token: stri
           <div className={`sv-stage${hidden ? " sv-hidden" : ""}`}>
             <canvas ref={canvas} className="sv-canvas" aria-hidden />
             {/* Pointer layer: the canvas itself never receives right-clicks or drags. */}
-            <div className="sv-shield" onClick={zoom} title={left > 0 ? "Click to inspect this spot at full resolution" : undefined}>
-              {inspect && <span className="sv-target" style={{ left: `${inspect.x * 100}%`, top: `${inspect.y * 100}%` }} />}
+            <div
+              className={`sv-shield${lens ? " sv-zooming" : ""}`}
+              onPointerDown={press}
+              onPointerMove={(e) => lens && track(e)}
+              onPointerUp={release}
+              onPointerCancel={release}
+              onLostPointerCapture={release}
+            >
+              <canvas
+                ref={lensCanvas}
+                className={`sv-lens${sharp ? " sv-lens-sharp" : ""}`}
+                aria-hidden
+                style={lens ? lensBox(lens) : { display: "none" }}
+              />
             </div>
             {state === "loading" && <p className="sv-msg">Unsealing a review copy for you…</p>}
             {state === "expired" && (
@@ -231,12 +361,13 @@ export function SecureViewer({ token, fileId, fileName, onClose }: { token: stri
           </div>
 
           <aside className="sv-side">
-            <div className={`sv-loupe${hidden ? " sv-hidden" : ""}`}>
-              <canvas ref={loupeCanvas} className="sv-loupe-canvas" aria-hidden style={{ visibility: inspect && !inspect.busy ? "visible" : "hidden" }} />
-              {!inspect && <p className="tiny muted">Click any spot on the image to see it at full, original resolution.</p>}
-              {inspect?.busy && <p className="tiny muted">Loading full resolution…</p>}
+            <div className="sv-howto">
+              <span className="sv-howto-icon" aria-hidden />
+              <p className="small">
+                <strong>Press and hold</strong> on the image to zoom, then glide to look around. The lens shows the original at full resolution.
+              </p>
             </div>
-            <p className="tiny muted">{left} close-up{left === 1 ? "" : "s"} left in this session.</p>
+            {left <= 20 && <p className="tiny muted">{left > 0 ? `Zoom is nearly used up for this session (${left} left).` : "Zoom limit reached. Reopen the preview to keep zooming."}</p>}
             <ul className="sv-facts tiny">
               <li>Marked with your name and the code {meta?.code || "…"}, so any copy can be traced.</li>
               <li>The original file stays sealed on the server until you approve.</li>

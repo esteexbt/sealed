@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Seal } from "@/components/Seal";
 import { SecureViewer } from "@/components/SecureViewer";
 import { CheckCard } from "@/components/CheckCard";
+import { ChangeRequestDialog } from "@/components/ChangeRequestDialog";
 import type { DeliveryCheck, MilestoneStatus } from "@/lib/types";
 
 export interface PortalFile {
@@ -154,7 +155,6 @@ function MilestoneBlock({
   const [opening, setOpening] = useState(false); // approve animation in flight
   const [revealed, setRevealed] = useState(m.status === "paid");
   const [asking, setAsking] = useState(false);
-  const [note, setNote] = useState("");
   const [busy, setBusy] = useState<"" | "approve" | "changes" | "cancel">("");
   const [error, setError] = useState("");
   const reviewing = m.status === "in_review" || m.status === "changes_requested";
@@ -168,7 +168,7 @@ function MilestoneBlock({
     return () => clearTimeout(t);
   }, [opening, router]);
 
-  async function act(action: "approve" | "changes" | "cancel") {
+  async function act(action: "approve" | "changes" | "cancel", note = "") {
     setBusy(action);
     setError("");
     const res = await fetch("/api/portal", {
@@ -293,7 +293,7 @@ function MilestoneBlock({
 
         {m.status === "in_review" && !opening && (
           <div className="pm-actions">
-            <button type="button" className="btn btn-ghost" onClick={() => setAsking((a) => !a)} disabled={busy !== ""}>
+            <button type="button" className="btn btn-ghost" onClick={() => { setError(""); setAsking(true); }} disabled={busy !== ""}>
               Request changes
             </button>
             <button type="button" className="btn btn-wax" onClick={() => act("approve")} disabled={busy !== ""}>
@@ -310,22 +310,18 @@ function MilestoneBlock({
       </div>
 
       {asking && m.status === "in_review" && (
-        <form
-          className="pm-ask"
-          onSubmit={(e) => {
-            e.preventDefault();
-            act("changes");
-          }}
-        >
-          <label htmlFor={`ask-${m.id}`} className="small"><strong>What needs to change?</strong> Be specific. {freelancer} gets 3 days to send a revision, and your payment stays held meanwhile.</label>
-          <textarea id={`ask-${m.id}`} className="textarea" style={{ minHeight: 110 }} value={note} onChange={(e) => setNote(e.target.value)} placeholder="e.g. The mobile mockup is missing, and the logo colours don't match the brief." />
-          <div className="row">
-            <button className="btn btn-ink" disabled={busy !== "" || note.trim().length < 10}>{busy === "changes" ? "Sending…" : "Send change request"}</button>
-            <button type="button" className="btn btn-quiet" onClick={() => setAsking(false)}>Cancel</button>
-          </div>
-        </form>
+        <ChangeRequestDialog
+          milestoneTitle={m.title}
+          amount={fmt(m.amount)}
+          freelancer={freelancer}
+          deliverables={m.deliverables}
+          busy={busy === "changes"}
+          error={error}
+          onSend={(note) => act("changes", note)}
+          onClose={() => setAsking(false)}
+        />
       )}
-      {error && <p className="error small" role="alert">{error}</p>}
+      {error && !asking && <p className="error small" role="alert">{error}</p>}
     </li>
   );
 }

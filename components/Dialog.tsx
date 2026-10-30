@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { useScrollLock } from "./useScrollLock";
 
 /**
  * App-wide confirmation dialog and toast, replacing the browser's
@@ -95,6 +96,7 @@ function ConfirmDialog({
   const inputRef = useRef<HTMLInputElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const ready = !typeToConfirm || typed.trim().toLowerCase() === typeToConfirm.toLowerCase();
+  useScrollLock();
 
   useEffect(() => {
     const prev = document.activeElement as HTMLElement | null;

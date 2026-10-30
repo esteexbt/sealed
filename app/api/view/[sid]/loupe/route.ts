@@ -4,7 +4,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ sid: string }> 
   const { sid } = await ctx.params;
   const url = new URL(req.url);
   try {
-    const out = await loupe(sid, req, Number(url.searchParams.get("x")), Number(url.searchParams.get("y")));
+    const out = await loupe(sid, req, Number(url.searchParams.get("x")), Number(url.searchParams.get("y")), url.searchParams.get("fresh") === "1");
     return new Response(new Uint8Array(out.bytes), {
       headers: {
         "Content-Type": "application/octet-stream",
@@ -12,6 +12,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ sid: string }> 
         "X-Content-Type-Options": "nosniff",
         "Cross-Origin-Resource-Policy": "same-origin",
         "X-Loupes-Left": String(out.left),
+        "X-Tile": `${out.rect.left},${out.rect.top},${out.rect.width},${out.rect.height}`,
       },
     });
   } catch (e) {
