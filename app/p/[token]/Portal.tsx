@@ -9,6 +9,7 @@ import { ChangeRequestDialog } from "@/components/ChangeRequestDialog";
 import type { DeliveryCheck, MilestoneStatus } from "@/lib/types";
 import type { Notice } from "@/lib/notify";
 import { LiveRefresh, MilestoneBell } from "@/components/MilestoneBell";
+import { ProjectDial } from "@/components/ProjectDial";
 
 export interface PortalFile {
   id: string;
@@ -99,35 +100,28 @@ export function Portal(props: Props) {
   return (
     <div className="portal">
       <LiveRefresh />
-      <header className="portal-head">
+      <header className="portal-head has-dial">
         <ProjectDial
           total={total}
           released={released}
           held={heldAmt}
           approved={milestones.filter((m) => m.status === "paid").length}
           stages={milestones.filter((m) => m.status !== "cancelled" && m.status !== "refunded").length}
-          fmt={fmt}
+          currency={currency}
         />
-        <p className="portal-from">
-          <Seal size={26} monogram={props.freelancer.charAt(0)} />
-          {props.freelancer}
-        </p>
-        <h1>{props.title}</h1>
-        <p className="lede muted">
-          Hi {props.clientName}. When a stage is ready, you pay into a PayPal hold and review the full work. {props.freelancer} only receives the money when you approve it.
-        </p>
-        <details className="how">
-          <summary className="small">How your payment is protected</summary>
-          <ol className="small">
-            <li>Before you pay, you see a sealed preview and an AI check of what was delivered against what you agreed.</li>
-            <li>When you pay, PayPal holds the money. It isn’t sent to {props.freelancer} yet.</li>
-            <li>You review the full work, then approve to release payment and download the files, or ask for changes and the money stays held.</li>
-            <li>If you don’t respond within 3 days, payment releases automatically. If changes you asked for aren’t delivered in time, you can cancel and the hold is released back to you.</li>
-          </ol>
-        </details>
-        {props.mode === "simulation" && (
-          <p className="notice tiny">Demo mode: payments are simulated. Connect PayPal sandbox keys to take real sandbox payments.</p>
-        )}
+        <div className="head-main">
+          <p className="portal-from">
+            <Seal size={26} monogram={props.freelancer.charAt(0)} />
+            {props.freelancer}
+          </p>
+          <h1>{props.title}</h1>
+          <p className="lede muted">
+            Hi {props.clientName}. When a stage is ready, you pay into a PayPal hold and review the full work. {props.freelancer} only receives the money when you approve it.
+          </p>
+          {props.mode === "simulation" && (
+            <p className="notice tiny">Demo mode: payments are simulated. Connect PayPal sandbox keys to take real sandbox payments.</p>
+          )}
+        </div>
       </header>
 
       <ol className="portal-ms">
@@ -478,85 +472,3 @@ function DownloadIcon() {
   );
 }
 
-/** Whole-project progress: share of the price released, with what's held shown on the same ring. */
-function ProjectDial({
-  total,
-  released,
-  held,
-  approved,
-  stages,
-  fmt,
-}: {
-  total: number;
-  released: number;
-  held: number;
-  approved: number;
-  stages: number;
-  fmt: (n: number) => string;
-}) {
-  const R = 52;
-  const C = 2 * Math.PI * R;
-  const paidPart = total ? released / total : 0;
-  const heldPart = total ? held / total : 0;
-  const pct = Math.round(paidPart * 100);
-  const [drawn, setDrawn] = useState(false);
-  useEffect(() => {
-    const t = requestAnimationFrame(() => setDrawn(true));
-    return () => cancelAnimationFrame(t);
-  }, []);
-  const toPay = Math.max(0, total - released - held);
-  const done = total > 0 && released >= total;
-
-  return (
-    <aside className={`dial${done ? " dial-done" : ""}`} aria-label={`Project ${pct}% paid out: ${fmt(released)} released, ${fmt(held)} held, ${fmt(toPay)} still to pay, of ${fmt(total)}`}>
-      <div className="dial-ring">
-        <svg viewBox="0 0 128 128" aria-hidden>
-          <defs>
-            <pattern id="dial-held" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-              <rect width="6" height="6" fill="#e6cf7a" />
-              <rect width="3" height="6" fill="#c9a227" />
-            </pattern>
-          </defs>
-          <circle cx="64" cy="64" r={R} className="dial-track" />
-          {heldPart > 0 && (
-            <circle
-              cx="64"
-              cy="64"
-              r={R}
-              className="dial-held"
-              stroke="url(#dial-held)"
-              strokeDasharray={`${drawn ? heldPart * C : 0} ${C}`}
-              strokeDashoffset={-(drawn ? paidPart * C : 0)}
-            />
-          )}
-          {paidPart > 0 && <circle cx="64" cy="64" r={R} className="dial-paid" strokeDasharray={`${drawn ? paidPart * C : 0} ${C}`} />}
-        </svg>
-        <div className="dial-num">
-          <strong>{pct}%</strong>
-          <span>{done ? "complete" : "paid out"}</span>
-        </div>
-      </div>
-      <dl className="dial-legend">
-        <div>
-          <dt><i className="dot-paid" />Released</dt>
-          <dd>{fmt(released)}</dd>
-        </div>
-        {held > 0 && (
-          <div>
-            <dt><i className="dot-held" />Held for review</dt>
-            <dd>{fmt(held)}</dd>
-          </div>
-        )}
-        {toPay > 0 && (
-          <div>
-            <dt><i className="dot-open" />Still to pay</dt>
-            <dd>{fmt(toPay)}</dd>
-          </div>
-        )}
-        <p className="tiny muted">
-          {approved} of {stages} stage{stages === 1 ? "" : "s"} approved · {fmt(total)} total
-        </p>
-      </dl>
-    </aside>
-  );
-}

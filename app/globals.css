@@ -518,9 +518,11 @@ p { margin: 0; }
 .nt-x:focus { outline: none; } .nt-x:focus-visible { outline: 2px solid var(--ink); outline-offset: 1px; }
 
 /* ------------------------------ project dial (client portal) ------------------------------ */
-.portal-head { grid-template-columns: minmax(0, 1fr) auto; column-gap: 40px; }
-.portal-head > :not(.dial) { grid-column: 1; }
-.dial { grid-column: 2; grid-row: 1 / span 4; align-self: center; display: grid; justify-items: center; gap: 14px; padding: 20px 22px; background: var(--sheet); border-radius: var(--r-m); box-shadow: var(--shadow-paper); min-width: 230px; }
+.has-dial { grid-template-columns: minmax(0, 1fr) auto; column-gap: 40px; align-items: center; }
+.head-main { grid-column: 1; grid-row: 1; display: grid; gap: inherit; align-content: start; }
+.proj-head .head-main { gap: 12px; }
+.portal-head .head-main { gap: 16px; }
+.dial { grid-column: 2; grid-row: 1; align-self: center; display: grid; justify-items: center; gap: 14px; padding: 20px 22px; background: var(--sheet); border-radius: var(--r-m); box-shadow: var(--shadow-paper); min-width: 230px; }
 .dial-ring { position: relative; width: 148px; height: 148px; }
 .dial-ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
 .dial-ring circle { fill: none; stroke-width: 12; }
@@ -542,8 +544,9 @@ p { margin: 0; }
 .dial-legend p { margin: 4px 0 0; padding-top: 8px; border-top: 1px solid var(--rule); text-align: center; }
 @media (prefers-reduced-motion: reduce) { .dial-paid, .dial-held { transition: none; } }
 @media (max-width: 760px) {
-  .portal-head { grid-template-columns: 1fr; }
-  .portal-from { order: 1; } .portal-head h1 { order: 2; } .portal-head .lede { order: 3; } .portal-head .how { order: 5; } .portal-head .notice { order: 6; }
+  .has-dial { grid-template-columns: 1fr; }
+  .head-main { display: contents; }
+  .head-main > * { order: 1; } .head-main > .notice, .head-main > .row { order: 5; }
   .dial { grid-column: 1; grid-row: auto; order: 4; grid-template-columns: auto 1fr; align-items: center; justify-items: stretch; gap: 18px; padding: 16px; min-width: 0; }
   .dial-ring { width: 108px; height: 108px; }
   .dial-num strong { font-size: 1.6rem; }

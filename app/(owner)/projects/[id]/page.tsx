@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { currentFiles, getProject, held, isOverdue, outstanding } from "@/lib/db";
+import { currentFiles, getProject, held, isOverdue } from "@/lib/db";
 import { money, portalUrl, settleDue } from "@/lib/actions";
 import { isStale, refreshInBackground } from "@/lib/check";
 import { formatBytes, statusLabel, when } from "@/lib/format";
 import { ensurePreviews } from "@/lib/files";
 import { CheckCard } from "@/components/CheckCard";
+import { ProjectDial } from "@/components/ProjectDial";
 import { notices, unread } from "@/lib/notify";
 import { LiveRefresh, MilestoneBell, OpenNotices } from "@/components/MilestoneBell";
 import { CopyLink, MilestoneAction, RemindButton, RemoveFile, UploadFiles } from "@/components/ProjectControls";
@@ -19,7 +20,6 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
   await ensurePreviews(id);
   const p = getProject(id);
   if (!p) notFound();
-  const left = outstanding(p);
   const holding = held(p);
   const total = p.milestones.reduce((a, m) => a + m.amount, 0);
   const url = portalUrl(p);
@@ -27,18 +27,27 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
   return (
     <div className="proj">
       <LiveRefresh />
-      <header className="proj-head">
-        <Link href="/" className="tiny muted back">All projects</Link>
-        <h1>{p.title}</h1>
-        <p className="muted">
-          For {p.clientName}
-          {p.clientEmail ? ` (${p.clientEmail})` : ""}. {money(total, p.currency)} in total
-          {holding > 0 ? `, ${money(holding, p.currency)} held by PayPal while they review` : ""}
-          {left > 0 ? `, ${money(left, p.currency)} still to collect.` : holding > 0 ? "." : ", fully paid."}
-        </p>
-        <div className="row">
-          <CopyLink url={url} />
-          <a className="btn btn-quiet" href={`/p/${p.portalToken}`} target="_blank" rel="noreferrer">Open the client’s view</a>
+      <header className="proj-head has-dial">
+        <ProjectDial
+          audience="freelancer"
+          total={total}
+          released={p.milestones.filter((m) => m.status === "paid").reduce((a, m) => a + m.amount, 0)}
+          held={holding}
+          approved={p.milestones.filter((m) => m.status === "paid").length}
+          stages={p.milestones.filter((m) => m.status !== "cancelled" && m.status !== "refunded").length}
+          currency={p.currency}
+        />
+        <div className="head-main">
+          <Link href="/" className="tiny muted back">All projects</Link>
+          <h1>{p.title}</h1>
+          <p className="muted">
+            For {p.clientName}
+            {p.clientEmail ? ` (${p.clientEmail})` : ""}
+          </p>
+          <div className="row">
+            <CopyLink url={url} />
+            <a className="btn btn-quiet" href={`/p/${p.portalToken}`} target="_blank" rel="noreferrer">Open the client’s view</a>
+          </div>
         </div>
       </header>
 
