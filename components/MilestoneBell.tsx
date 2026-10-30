@@ -31,6 +31,12 @@ export function MilestoneBell({
   const [fresh, setFresh] = useState<Set<string>>(new Set());
   const router = useRouter();
   const count = unreadIds.length;
+  // Lets other controls on the page (the "See what they asked" button) open this pop-up.
+  useEffect(() => {
+    const on = () => showRef.current();
+    window.addEventListener(`notices:${milestoneId}`, on);
+    return () => window.removeEventListener(`notices:${milestoneId}`, on);
+  }, [milestoneId]);
   const label = count ? `${count} new update${count === 1 ? "" : "s"} from ${client}` : `Updates from ${client}`;
 
   const show = () => {
@@ -38,6 +44,8 @@ export function MilestoneBell({
     setOpen(true);
     if (count) fetch(`/api/projects/${projectId}/milestones/${milestoneId}/seen`, { method: "POST" }).then(() => router.refresh()).catch(() => {});
   };
+  const showRef = useRef(show);
+  showRef.current = show;
 
   return (
     <>
@@ -155,4 +163,13 @@ export function LiveRefresh({ every = 20000 }: { every?: number }) {
     };
   }, [router, every]);
   return null;
+}
+
+/** Opens a milestone's updates pop-up from elsewhere on the page. */
+export function OpenNotices({ milestoneId, children }: { milestoneId: string; children: React.ReactNode }) {
+  return (
+    <button type="button" className="ms-note-link" onClick={() => window.dispatchEvent(new Event(`notices:${milestoneId}`))}>
+      {children}
+    </button>
+  );
 }

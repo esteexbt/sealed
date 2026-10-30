@@ -7,7 +7,7 @@ import { formatBytes, statusLabel, when } from "@/lib/format";
 import { ensurePreviews } from "@/lib/files";
 import { CheckCard } from "@/components/CheckCard";
 import { notices, unread } from "@/lib/notify";
-import { LiveRefresh, MilestoneBell } from "@/components/MilestoneBell";
+import { LiveRefresh, MilestoneBell, OpenNotices } from "@/components/MilestoneBell";
 import { CopyLink, MilestoneAction, RemindButton, RemoveFile, UploadFiles } from "@/components/ProjectControls";
 
 const date = (d: string) => new Date(d + (d.length === 10 ? "T12:00:00Z" : "")).toLocaleDateString("en-US", { month: "short", day: "numeric" });
@@ -89,11 +89,11 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
                 </p>
               )}
               {m.status === "changes_requested" && openReq && (
-                <div className="ms-note ms-note-changes">
-                  <p>
-                    <strong>{p.clientName} asked for changes</strong> on {when(openReq.at)}. Their payment stays held. Send a revision by {m.reviseBy ? when(m.reviseBy) : "the deadline"}, or they can cancel and the hold goes back to them.
-                  </p>
-                  <blockquote>{openReq.note}</blockquote>
+                <div className="ms-note ms-note-changes ms-note-slim">
+                  <span>
+                    <strong>Changes requested.</strong> Send a revision by {m.reviseBy ? when(m.reviseBy) : "the deadline"}. Payment stays held until then.
+                  </span>
+                  <OpenNotices milestoneId={m.id}>See what {p.clientName} asked</OpenNotices>
                 </div>
               )}
               {m.status === "cancelled" && <p className="ms-note">Cancelled. The client’s PayPal hold was released back to them.</p>}
