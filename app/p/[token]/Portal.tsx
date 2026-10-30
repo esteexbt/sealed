@@ -14,6 +14,7 @@ export interface PortalFile {
   hasPreview: boolean;
   image: boolean;
   pdf: boolean;
+  svg: boolean;
   reviewable: boolean;
   pages: number | null;
   size: number;
@@ -252,7 +253,7 @@ function MilestoneBlock({
                   <a className="pm-dl" href={`/api/files/${f.id}?t=${token}&variant=full&download=1`}>Download</a>
                 ) : (
                   <span className="tiny muted">
-                    {f.pdf ? `PDF, ${f.pages || 1} page${(f.pages || 1) === 1 ? "" : "s"}` : f.width ? `${f.width}×${f.height}` : `${Math.max(1, Math.round(f.size / 1024))} KB`}
+                    {f.pdf ? `PDF, ${f.pages || 1} page${(f.pages || 1) === 1 ? "" : "s"}` : f.svg ? "SVG vector" : f.width ? `${f.width}×${f.height}` : `${Math.max(1, Math.round(f.size / 1024))} KB`}
                   </span>
                 )}
               </div>

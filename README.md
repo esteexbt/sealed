@@ -15,7 +15,7 @@ Freelancers routinely deliver work and then wait weeks to get paid, or never get
 1. **Brief to plan (AI).** Paste a DM, email or call notes. The scoping agent splits the work into 2–5 milestones, each ending in something the client can see. It prices them (fitting a stated budget), dates them against the client's deadline, and lists the questions worth asking first. Every field stays editable.
 2. **Deliver and get checked (AI).** The freelancer uploads each stage's files. Each file is fingerprinted (SHA-256) and measured. A delivery check compares the files against the agreed deliverables: rules prove the facts (counts, formats, sizes, duplicates), and Gemini looks at the images to judge whether they match and look finished. Both sides see the same check before any money moves.
 3. **Pay into a PayPal hold.** The client sees sealed previews and the check, then pays with PayPal Checkout using `intent: AUTHORIZE`. PayPal reserves the money on the client's account; it is not sent to the freelancer yet. Sealed AI verifies the authorization (status, `custom_id`, amount, currency) on the server before anything changes.
-4. **Review the full work, protected.** While the money is held, the client opens a protected review copy of each image or PDF page and can inspect any spot at full original resolution. PDFs are rendered page by page on the server (pdf.js), so the PDF file itself never reaches the client before approval either. The original file never leaves the server.
+4. **Review the full work, protected.** While the money is held, the client opens a protected review copy of each image, SVG or PDF page and can inspect any spot at full original resolution. PDFs are rendered page by page on the server (pdf.js), so the PDF file itself never reaches the client before approval either. The original file never leaves the server.
 5. **Approve, or ask for changes.**
    - **Approve** captures the authorization: the freelancer is paid, the seal cracks, and the originals unlock for download.
    - **Request changes** keeps the money held and locks in a 3-day revision deadline. The freelancer uploads a revision, which is checked again and opens a fresh review window.
@@ -98,6 +98,7 @@ Open http://localhost:3000. The seed script prints a client portal link.
 - The client portal receives preview URLs only; original file keys never reach the browser.
 - `/api/files/:id?variant=full` returns `402` for clients until the milestone is paid. Requests without a portal token need the owner session.
 - A milestone becomes `in_review` only after PayPal confirms the authorization, and `paid` only after the authorization is captured. A void or refund keeps the originals sealed.
+- Delivered files are treated as untrusted: SVGs are sanitised (no scripts, event handlers, entities or external references) before rendering, originals are served with `Content-Security-Policy: sandbox` and `nosniff`, and anything that isn't an image downloads instead of opening.
 - Files are locked while a milestone is in review or paid; withdrawn files stay on record with their fingerprint.
 - Orders and captures use `PayPal-Request-Id` idempotency keys.
 

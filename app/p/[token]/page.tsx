@@ -4,7 +4,7 @@ import { currentFiles, getProjectByToken } from "@/lib/db";
 import { config, paypalMode } from "@/lib/config";
 import { settleDue } from "@/lib/actions";
 import { isStale, refreshInBackground } from "@/lib/check";
-import { isImage, isPdf, isReviewable } from "@/lib/files";
+import { ensurePreviews, isImage, isPdf, isReviewable } from "@/lib/files";
 import { Portal, type PortalMilestone } from "./Portal";
 
 export const dynamic = "force-dynamic";
@@ -17,8 +17,10 @@ export async function generateMetadata({ params }: { params: Promise<{ token: st
 export default async function PortalPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
   await settleDue();
-  const p = getProjectByToken(token);
-  if (!p) notFound();
+  const first = getProjectByToken(token);
+  if (!first) notFound();
+  await ensurePreviews(first.id);
+  const p = getProjectByToken(token)!;
 
   // Only send what the client is allowed to see: never original file keys.
   const milestones: PortalMilestone[] = p.milestones.map((m) => {
@@ -45,6 +47,7 @@ export default async function PortalPage({ params }: { params: Promise<{ token: 
         hasPreview: Boolean(f.previewKey),
         image: isImage(f.mime),
         pdf: isPdf(f.mime, f.name),
+        svg: f.mime === "image/svg+xml",
         reviewable: isReviewable(f),
         pages: f.pages || null,
         size: f.size,

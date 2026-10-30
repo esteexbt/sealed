@@ -18,7 +18,7 @@ interface Session {
   loupe: { left: number; size: number; sharper: boolean };
   page: number;
   pages: number;
-  kind: "image" | "pdf";
+  kind: "image" | "pdf" | "svg";
 }
 
 function unxor(buf: ArrayBuffer, keyB64: string) {
@@ -302,6 +302,8 @@ export function SecureViewer({ token, fileId, fileName, onClose }: { token: stri
                 ? "Opening a protected review copy…"
                 : meta.kind === "pdf"
                   ? `Page ${meta.page} of ${meta.pages}, rendered as a watermarked review copy. The PDF itself is released when you approve.`
+                  : meta.kind === "svg"
+                    ? "Vector file, rendered as a watermarked review copy. The SVG itself is released when you approve."
                   : meta.original.width > meta.w
                   ? `Review copy at ${meta.w}×${meta.h}. The ${meta.original.width}×${meta.original.height} original is released when you approve.`
                   : `Shown at full ${meta.w}×${meta.h} size with your watermark. The clean original is released when you approve.`}

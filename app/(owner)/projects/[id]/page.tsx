@@ -4,6 +4,7 @@ import { currentFiles, getProject, held, isOverdue, outstanding } from "@/lib/db
 import { money, portalUrl, settleDue } from "@/lib/actions";
 import { isStale, refreshInBackground } from "@/lib/check";
 import { formatBytes, statusLabel, when } from "@/lib/format";
+import { ensurePreviews } from "@/lib/files";
 import { CheckCard } from "@/components/CheckCard";
 import { CopyLink, MilestoneAction, RemindButton, RemoveFile, UploadFiles } from "@/components/ProjectControls";
 
@@ -13,6 +14,7 @@ const EDITABLE = new Set(["draft", "awaiting_payment", "changes_requested"]);
 export default async function ProjectPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   await settleDue();
+  await ensurePreviews(id);
   const p = getProject(id);
   if (!p) notFound();
   const left = outstanding(p);
@@ -86,7 +88,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
                     <li key={f.id} className="file">
                       {f.previewKey ? (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={`/api/files/${f.id}?variant=${f.mime === "application/pdf" ? "page" : "full"}`} alt="" className="file-thumb" />
+                        <img src={`/api/files/${f.id}?variant=${f.mime === "application/pdf" || f.mime === "image/svg+xml" ? "page" : "full"}`} alt="" className="file-thumb" />
                       ) : (
                         <span className="file-thumb file-generic">{f.name.split(".").pop()?.toUpperCase()}</span>
                       )}

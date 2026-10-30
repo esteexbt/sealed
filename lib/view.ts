@@ -2,7 +2,7 @@ import "server-only";
 import crypto from "node:crypto";
 import sharp from "sharp";
 import { currentFiles, findMilestone, id, log, mutate, read } from "./db";
-import { isPdf, isReviewable, reviewSource } from "./files";
+import { isPdf, isReviewable, isSvg, reviewSource } from "./files";
 
 /**
  * Protected review copies.
@@ -210,7 +210,7 @@ export async function openView(portalToken: string, fileId: string, pageArg = 1)
     original: { width: origW, height: origH },
     page,
     pages,
-    kind: pdf ? ("pdf" as const) : ("image" as const),
+    kind: pdf ? ("pdf" as const) : isSvg(file.mime, file.name) ? ("svg" as const) : ("image" as const),
     loupe: { left: TILES_PER_SESSION, size: TILE, sharper: origW > w || origH > h },
   };
 }
