@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
-import { currentFiles, getProject, held, isOverdue } from "@/lib/db";
+import { notFound, redirect } from "next/navigation";
+import { currentFiles, getProject, held, isOverdue, projectSlug } from "@/lib/db";
 import { money, portalUrl, settleDue } from "@/lib/actions";
 import { isStale, refreshInBackground } from "@/lib/check";
 import { statusLabel, when } from "@/lib/format";
@@ -18,9 +18,13 @@ const EDITABLE = new Set(["draft", "awaiting_payment", "changes_requested"]);
 export default async function ProjectPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   await settleDue();
-  await ensurePreviews(id);
-  const p = getProject(id);
-  if (!p) notFound();
+  const found = getProject(id);
+  if (!found) notFound();
+  // Always show the readable address, e.g. /projects/brand-identity-for-kola-press.
+  const slug = projectSlug(found);
+  if (decodeURIComponent(id) !== slug) redirect(`/projects/${slug}`);
+  await ensurePreviews(found.id);
+  const p = getProject(found.id)!;
   const holding = held(p);
   const total = p.milestones.reduce((a, m) => a + m.amount, 0);
   const url = portalUrl(p);

@@ -37,7 +37,7 @@ export function NewProject({ modelLabel }: { modelLabel: string }) {
       const res = await fetch("/api/projects", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ plan, brief }) });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error);
-      router.push(`/projects/${json.id}`);
+      router.push(`/projects/${json.slug || json.id}`);
     } catch (e) {
       setError((e as Error).message);
       setBusy(null);

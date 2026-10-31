@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { listProjects, read, isOverdue, outstanding, held } from "@/lib/db";
+import { listProjects, read, isOverdue, outstanding, held, projectSlug } from "@/lib/db";
 import { money, settleDue } from "@/lib/actions";
 import { MilestoneSeals } from "@/components/MilestoneSeals";
 
@@ -67,7 +67,7 @@ export default async function Dashboard() {
               const hold = held(p);
               return (
                 <li key={p.id}>
-                  <Link href={`/projects/${p.id}`} className="project-row">
+                  <Link href={`/projects/${projectSlug(p)}`} className="project-row">
                     <div className="project-row-main">
                       <span className="project-client">{p.clientName}</span>
                       <span className="project-title">{p.title}</span>

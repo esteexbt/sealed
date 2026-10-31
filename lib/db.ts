@@ -49,8 +49,21 @@ export function listProjects(): Project[] {
   return read().projects.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
-export function getProject(projectId: string): Project | undefined {
-  return read().projects.find((p) => p.id === projectId);
+const slugify = (t: string) =>
+  t.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[’'"]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 60).replace(/-+$/, "") || "project";
+
+/** Readable URL name for a project, from its title. Later projects with the same title get -2, -3… */
+export function projectSlug(p: Project, all: Project[] = read().projects): string {
+  const base = slugify(p.title);
+  const same = all.filter((x) => slugify(x.title) === base);
+  const n = same.findIndex((x) => x.id === p.id);
+  return n > 0 ? `${base}-${n + 1}` : base;
+}
+
+/** Finds a project by its readable name or its id. */
+export function getProject(idOrSlug: string): Project | undefined {
+  const all = read().projects;
+  return all.find((p) => p.id === idOrSlug) || all.find((p) => projectSlug(p, all) === decodeURIComponent(idOrSlug).toLowerCase());
 }
 
 export function getProjectByToken(t: string): Project | undefined {
