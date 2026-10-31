@@ -1,4 +1,4 @@
-import { isOwner } from "@/lib/auth";
+import { currentUser } from "@/lib/auth";
 import { findMilestone, mutate, read } from "@/lib/db";
 import sharp from "sharp";
 import { backfillPreview, isImage, isPdf, isSvg, readStored, reviewSource } from "@/lib/files";
@@ -16,10 +16,13 @@ export async function GET(req: Request, ctx: { params: Promise<{ fid: string }> 
   const t = url.searchParams.get("t");
   const v = url.searchParams.get("variant");
   const variant = v === "full" || v === "page" ? v : "preview";
-  if (!t && !(await isOwner())) return new Response("Not found", { status: 404 });
+  // Without a portal token, only the freelancer who owns the project gets the file.
+  const me = t ? null : await currentUser();
+  if (!t && !me) return new Response("Not found", { status: 404 });
   const s = read();
   for (const p of s.projects) {
     if (t && p.portalToken !== t) continue;
+    if (!t && p.ownerId !== me!.id) continue;
     for (const m of p.milestones) {
       const f = m.files.find((x) => x.id === fid);
       if (!f) continue;

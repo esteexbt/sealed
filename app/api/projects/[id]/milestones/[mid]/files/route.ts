@@ -1,4 +1,4 @@
-import { requireOwner } from "@/lib/auth";
+import { requireProject } from "@/lib/auth";
 import { NextResponse } from "next/server";
 import { findMilestone, log, mutate, read } from "@/lib/db";
 import { storeDeliverable } from "@/lib/files";
@@ -9,9 +9,9 @@ const EDITABLE = new Set(["draft", "awaiting_payment", "changes_requested"]);
 const MAX = 25 * 1024 * 1024;
 
 export async function POST(req: Request, ctx: { params: Promise<{ id: string; mid: string }> }) {
-  const denied = await requireOwner();
-  if (denied) return denied;
   const { id, mid } = await ctx.params;
+  const { denied } = await requireProject(id);
+  if (denied) return denied;
   const form = await req.formData();
   const files = form.getAll("files").filter((f): f is File => f instanceof File && f.size > 0);
   if (!files.length) return NextResponse.json({ error: "Choose at least one file." }, { status: 400 });

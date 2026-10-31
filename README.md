@@ -81,7 +81,7 @@ Open http://localhost:3000. The seed script prints a client portal link.
 
 - **PayPal:** create a sandbox app at developer.paypal.com (Apps & Credentials, Sandbox) and set `PAYPAL_CLIENT_ID` and `PAYPAL_CLIENT_SECRET`. Pay in the portal with your sandbox personal account. With no keys set, payments are simulated end to end, using the same verification code path.
 - **AI:** set `GROQ_API_KEY` (free at console.groq.com) or `GOOGLE_GENERATIVE_AI_API_KEY` (free at aistudio.google.com). Anthropic and OpenAI keys also work. `AI_MODEL` overrides the default model.
-- **Dashboard password:** set `OWNER_PASSWORD` when deployed. Clients never need an account; their portal link holds an unguessable token.
+- **Accounts:** freelancers sign up with email and password, or with Google or PayPal once those keys are set (see `.env.example`). Each freelancer only sees their own projects. Clients never need an account: their portal link holds an unguessable token. `npm run seed` also creates a demo account, opened from **Try the demo** on the sign-in page.
 
 ## Deploy
 
@@ -90,10 +90,13 @@ Open http://localhost:3000. The seed script prints a client portal link.
 ## Testing notes for judges
 
 - Live demo: _added at submission_
-- Dashboard password: _added at submission_
+- Sign in: press **Try the demo** on the sign-in page, or create your own account with any email.
 - PayPal sandbox buyer: _added at submission_
 
 ## Security model
+
+- Freelancer accounts: passwords hashed with scrypt; sessions are signed, http-only cookies; sign-in attempts are rate limited. Google and PayPal sign-in use the OAuth authorization-code flow with a state check.
+- Every freelancer page and API checks that the project belongs to the signed-in freelancer. Another freelancer gets "not found", never someone else's files or payments.
 
 - The client portal receives preview URLs only; original file keys never reach the browser.
 - `/api/files/:id?variant=full` returns `402` for clients until the milestone is paid. Requests without a portal token need the owner session.

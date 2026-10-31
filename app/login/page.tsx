@@ -1,38 +1,14 @@
-"use client";
+import { redirect } from "next/navigation";
+import { currentUser, users } from "@/lib/auth";
+import { providers } from "@/lib/oauth";
+import { AuthForm } from "./AuthForm";
 
-import { useState } from "react";
-import { Seal } from "@/components/Seal";
+export const dynamic = "force-dynamic";
+export const metadata = { title: "Sign in | Sealed" };
 
-export default function Login() {
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const [busy, setBusy] = useState(false);
-  return (
-    <main className="login">
-      <form
-        className="sheet login-card"
-        onSubmit={async (e) => {
-          e.preventDefault();
-          setBusy(true);
-          setError("");
-          const res = await fetch("/api/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ password }) });
-          if (res.ok) {
-            window.location.href = "/";
-            return;
-          }
-          setError((await res.json()).error);
-          setBusy(false);
-        }}
-      >
-        <Seal size={52} />
-        <h1>Sign in to Sealed</h1>
-        <div className="field">
-          <label htmlFor="pw">Password</label>
-          <input id="pw" className="input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoFocus />
-        </div>
-        {error && <p className="error" role="alert">{error}</p>}
-        <button className="btn btn-ink" disabled={busy || !password}>{busy ? "Signing in…" : "Sign in"}</button>
-      </form>
-    </main>
-  );
+export default async function LoginPage({ searchParams }: { searchParams: Promise<{ error?: string; mode?: string }> }) {
+  if (await currentUser()) redirect("/");
+  const { error, mode } = await searchParams;
+  const demo = !/^(off|false|0|no)$/i.test(process.env.DEMO_LOGIN || "") && users().some((u) => u.demo);
+  return <AuthForm google={providers.google} paypal={providers.paypal} demo={demo} initialError={error || ""} initialMode={mode === "signup" ? "signup" : "signin"} />;
 }

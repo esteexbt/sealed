@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { pageUser } from "@/lib/auth";
 import { currentFiles, getProject, held, isOverdue, projectSlug } from "@/lib/db";
 import { money, portalUrl, settleDue } from "@/lib/actions";
 import { isStale, refreshInBackground } from "@/lib/check";
@@ -17,14 +18,15 @@ const EDITABLE = new Set(["draft", "awaiting_payment", "changes_requested"]);
 
 export default async function ProjectPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  const user = await pageUser();
   await settleDue();
-  const found = getProject(id);
+  const found = getProject(id, user.id);
   if (!found) notFound();
   // Always show the readable address, e.g. /projects/brand-identity-for-kola-press.
   const slug = projectSlug(found);
   if (decodeURIComponent(id) !== slug) redirect(`/projects/${slug}`);
   await ensurePreviews(found.id);
-  const p = getProject(found.id)!;
+  const p = getProject(found.id, user.id)!;
   const holding = held(p);
   const total = p.milestones.reduce((a, m) => a + m.amount, 0);
   const url = portalUrl(p);

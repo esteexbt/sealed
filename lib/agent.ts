@@ -5,6 +5,7 @@ import { PayPalAgentToolkit } from "@paypal/agent-toolkit/ai-sdk";
 import { config, paypalMode } from "./config";
 import { model } from "./ai";
 import { isOverdue, listProjects, read } from "./db";
+import type { User } from "./types";
 import { money, portalUrl, receivables, refundMilestone, sendReminder } from "./actions";
 import { draftReminder } from "./ai";
 
@@ -21,7 +22,7 @@ export interface AgentReply {
   pending?: { kind: "remind" | "refund"; projectId: string; milestoneId: string; message?: string } | null;
 }
 
-const SYSTEM = () => `You are Sealed's money assistant for ${config.freelancerName}, an independent freelancer.
+const SYSTEM = (u: User) => `You are Sealed's money assistant for ${u.name}, an independent freelancer.
 You can see their projects, milestones and payments in Sealed, and act on their PayPal ${paypalMode === "sandbox" ? "sandbox " : ""}account.
 Today is ${new Date().toISOString().slice(0, 10)}.
 
@@ -33,18 +34,18 @@ How you work:
 - Keep replies short: a sentence or two, then a compact list if there are several items. Plain text, no markdown headers.
 - Amounts always include currency. Refer to clients and milestones by name, not id.`;
 
-function sealedTools() {
+function sealedTools(u: User) {
   return {
     list_receivables: tool({
       description: "List every milestone awaiting payment across all projects, with amount, due date, overdue flag and reminders already sent.",
       parameters: z.object({}),
-      execute: async () => receivables(),
+      execute: async () => receivables(u.id),
     }),
     list_projects: tool({
       description: "List all projects with each milestone's status, amount and due date.",
       parameters: z.object({}),
       execute: async () =>
-        listProjects().map((p) => ({
+        listProjects(u.id).map((p) => ({
           projectId: p.id,
           title: p.title,
           client: p.clientName,
@@ -71,8 +72,8 @@ function sealedTools() {
         confirmed: z.boolean().describe("true only after the user approved the preview"),
       }),
       execute: async ({ projectId, milestoneId, message, confirmed }) => {
+        const { project, milestone } = locate(u, projectId, milestoneId);
         if (!confirmed) {
-          const { project, milestone } = locate(projectId, milestoneId);
           const days = Math.max(0, Math.floor((Date.now() - new Date(milestone.dueDate + "T00:00:00Z").getTime()) / 86400000));
           const preview =
             message ||
@@ -83,6 +84,7 @@ function sealedTools() {
               daysOverdue: days,
               remindersSent: milestone.reminders.length,
               portalUrl: portalUrl(project),
+              freelancer: u.name,
             }));
           return { status: "preview", to: project.clientEmail, preview };
         }
@@ -94,7 +96,7 @@ function sealedTools() {
       description: "Refund a paid milestone through PayPal. Its files seal again. Call with confirmed=false first.",
       parameters: z.object({ projectId: z.string(), milestoneId: z.string(), confirmed: z.boolean() }),
       execute: async ({ projectId, milestoneId, confirmed }) => {
-        const { project, milestone } = locate(projectId, milestoneId);
+        const { project, milestone } = locate(u, projectId, milestoneId);
         if (!confirmed) return { status: "preview", refund: money(milestone.amount, project.currency), milestone: milestone.title, client: project.clientName };
         const r = await refundMilestone(projectId, milestoneId);
         return { status: "refunded", refundId: r.id };
@@ -103,8 +105,9 @@ function sealedTools() {
   };
 }
 
-function locate(projectId: string, milestoneId: string) {
-  const project = read().projects.find((p) => p.id === projectId);
+/** A milestone in one of this freelancer's own projects, or an error. */
+function locate(u: User, projectId: string, milestoneId: string) {
+  const project = read().projects.find((p) => p.id === projectId && p.ownerId === u.id);
   const milestone = project?.milestones.find((m) => m.id === milestoneId);
   if (!project || !milestone) throw new Error("Milestone not found");
   return { project, milestone };
@@ -140,23 +143,23 @@ function summarize(name: string, args: unknown, result: unknown): string {
   return "done";
 }
 
-export async function runAgent(messages: CoreMessage[]): Promise<AgentReply> {
+export async function runAgent(messages: CoreMessage[], u: User): Promise<AgentReply> {
   const m = model();
-  if (!m) return offlineAgent(messages);
+  if (!m) return offlineAgent(messages, u);
 
   let result;
   try {
     result = await generateText({
       model: m,
-      system: SYSTEM(),
+      system: SYSTEM(u),
       messages,
-      tools: { ...sealedTools(), ...paypalTools() },
+      tools: { ...sealedTools(u), ...paypalTools() },
       maxSteps: 8,
     });
   } catch (e) {
     // Free-tier quota or provider outage: answer with the rule-based assistant instead of failing.
     console.warn("[ai] assistant failed, using offline fallback:", (e as Error).message);
-    return offlineAgent(messages);
+    return offlineAgent(messages, u);
   }
 
   const steps: AgentStep[] = [];
@@ -175,16 +178,16 @@ export async function runAgent(messages: CoreMessage[]): Promise<AgentReply> {
 
 /* ------------- Offline assistant: rule-based, same tools, no LLM ------------- */
 
-async function offlineAgent(messages: CoreMessage[]): Promise<AgentReply> {
+async function offlineAgent(messages: CoreMessage[], u: User): Promise<AgentReply> {
   const last = messages.at(-1);
   const text = (typeof last?.content === "string" ? last.content : "").toLowerCase();
-  const rows = receivables();
+  const rows = receivables(u.id);
 
   if (/who owes|outstanding|unpaid|owed|receivable|overdue|money/.test(text)) {
     if (!rows.length) return { text: "Nobody owes you anything right now. Every milestone is paid.", steps: [{ tool: "list_receivables", source: "sealed", summary: "0 awaiting payment" }] };
     const total = rows.reduce((a, r) => a + r.amount, 0);
     const lines = rows.map((r) => `${r.client}: ${money(r.amount, r.currency)} for ${r.milestone}, due ${r.dueDate}${r.overdue ? " (overdue)" : ""}`);
-    const heldRows = listProjects().flatMap((p) => p.milestones.filter((m) => m.status === "in_review" || m.status === "changes_requested").map((m) => ({ p, m })));
+    const heldRows = listProjects(u.id).flatMap((p) => p.milestones.filter((m) => m.status === "in_review" || m.status === "changes_requested").map((m) => ({ p, m })));
     if (heldRows.length) lines.push(`\nHeld by PayPal while clients review: ${heldRows.map((h) => `${h.p.clientName} ${money(h.m.amount, h.p.currency)} (${h.m.title}${h.m.status === "changes_requested" ? ", changes requested" : ""})`).join("; ")}.`);
     const overdue = rows.filter((r) => r.overdue);
     return {
@@ -194,7 +197,7 @@ async function offlineAgent(messages: CoreMessage[]): Promise<AgentReply> {
   }
 
   if (/collect|earned|received|paid me|income/.test(text)) {
-    const paid = listProjects().flatMap((p) => p.milestones.filter((m) => m.status === "paid" && m.payment?.capturedAt).map((m) => ({ p, m })));
+    const paid = listProjects(u.id).flatMap((p) => p.milestones.filter((m) => m.status === "paid" && m.payment?.capturedAt).map((m) => ({ p, m })));
     const month = new Date().toISOString().slice(0, 7);
     const thisMonth = paid.filter((x) => x.m.payment!.capturedAt!.startsWith(month));
     const sum = thisMonth.reduce((a, x) => a + x.m.amount, 0);
@@ -212,7 +215,7 @@ async function offlineAgent(messages: CoreMessage[]): Promise<AgentReply> {
     const q = remind[1].replace(/[?.!]/g, "").trim();
     const row = rows.find((r) => r.client.toLowerCase().includes(q) || r.project.toLowerCase().includes(q)) || rows.find((r) => r.overdue);
     if (!row) return { text: `I couldn't find an unpaid milestone for "${q}".`, steps: [] };
-    const p = listProjects().find((x) => x.id === row.projectId)!;
+    const p = listProjects(u.id).find((x) => x.id === row.projectId)!;
     const msg = await draftReminder({
       clientName: row.client,
       milestoneTitle: row.milestone,
@@ -220,6 +223,7 @@ async function offlineAgent(messages: CoreMessage[]): Promise<AgentReply> {
       daysOverdue: Math.max(0, Math.floor((Date.now() - new Date(row.dueDate + "T00:00:00Z").getTime()) / 86400000)),
       remindersSent: row.remindersSent,
       portalUrl: portalUrl(p),
+      freelancer: u.name,
     });
     return {
       text: `Here's the reminder for ${row.client} (${row.clientEmail}). It goes out as a PayPal invoice for ${money(row.amount, row.currency)} with your portal link.\n\n${msg}\n\nSend it?`,
@@ -234,7 +238,8 @@ async function offlineAgent(messages: CoreMessage[]): Promise<AgentReply> {
   };
 }
 
-export async function confirmPending(p: NonNullable<AgentReply["pending"]>): Promise<AgentReply> {
+export async function confirmPending(p: NonNullable<AgentReply["pending"]>, u: User): Promise<AgentReply> {
+  locate(u, p.projectId, p.milestoneId);
   if (p.kind === "remind") {
     const out = await sendReminder(p.projectId, p.milestoneId, p.message);
     return {

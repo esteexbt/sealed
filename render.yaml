@@ -21,9 +21,13 @@ services:
         sync: false
       - key: ANTHROPIC_API_KEY
         sync: false
-      - key: OWNER_PASSWORD
-        sync: false
       - key: APP_URL
         sync: false
-      - key: FREELANCER_NAME
-        value: Ada Okafor
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: PAYPAL_LOGIN
+        value: "off"

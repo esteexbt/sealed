@@ -8,6 +8,7 @@ import { ensurePreviews, isImage, isPdf, isReviewable } from "@/lib/files";
 import { Portal, type PortalMilestone } from "./Portal";
 import { clientNotices, unread } from "@/lib/notify";
 import { money } from "@/lib/actions";
+import { ownerName } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -28,7 +29,7 @@ export default async function PortalPage({ params }: { params: Promise<{ token: 
   const milestones: PortalMilestone[] = p.milestones.map((m) => {
     if (isStale(m)) refreshInBackground(p.id, m);
     const openRequest = (m.changeRequests || []).filter((c) => !c.resolvedAt).at(-1) || null;
-    const updates = clientNotices(m, config.freelancerName, (n) => money(n, p.currency));
+    const updates = clientNotices(m, ownerName(p), (n) => money(n, p.currency));
     return {
       id: m.id,
       title: m.title,
@@ -68,7 +69,7 @@ export default async function PortalPage({ params }: { params: Promise<{ token: 
       token={token}
       title={p.title}
       clientName={p.clientName}
-      freelancer={config.freelancerName}
+      freelancer={ownerName(p)}
       currency={p.currency}
       milestones={milestones}
       mode={paypalMode}

@@ -1,11 +1,13 @@
 import { listProjects, isOverdue } from "@/lib/db";
+import { pageUser } from "@/lib/auth";
 import { settleDue } from "@/lib/actions";
 import { statusLabel } from "@/lib/format";
 import { LedgerGrid, type LedgerRow } from "./LedgerGrid";
 
 export default async function LedgerPage() {
+  const user = await pageUser();
   await settleDue();
-  const rows: LedgerRow[] = listProjects().flatMap((p) =>
+  const rows: LedgerRow[] = listProjects(user.id).flatMap((p) =>
     p.milestones.map((m) => ({
       projectId: p.id,
       milestoneId: m.id,

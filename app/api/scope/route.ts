@@ -1,9 +1,9 @@
-import { requireOwner } from "@/lib/auth";
+import { requireUser } from "@/lib/auth";
 import { NextResponse } from "next/server";
 import { scopeBrief } from "@/lib/ai";
 
 export async function POST(req: Request) {
-  const denied = await requireOwner();
+  const { user, denied } = await requireUser();
   if (denied) return denied;
   const { brief, rate } = (await req.json()) as { brief?: string; rate?: string };
   if (!brief || brief.trim().length < 15) {

@@ -8,8 +8,6 @@ export const config = {
   googleKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY || "",
   groqKey: process.env.GROQ_API_KEY || "",
   appUrl: (process.env.APP_URL || "http://localhost:3000").replace(/\/$/, ""),
-  freelancerName: process.env.FREELANCER_NAME || "Ada Okafor",
-  freelancerEmail: process.env.FREELANCER_EMAIL || "ada@example.com",
 };
 
 /** Real PayPal sandbox when keys exist; otherwise a faithful local simulation. */

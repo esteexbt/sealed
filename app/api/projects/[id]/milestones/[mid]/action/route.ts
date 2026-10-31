@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
-import { requireOwner } from "@/lib/auth";
+import { requireProject } from "@/lib/auth";
 import { freelancerCancel, sendRevision } from "@/lib/actions";
 import { runCheck } from "@/lib/check";
 
 /** Freelancer actions on a milestone. */
 export async function POST(req: Request, ctx: { params: Promise<{ id: string; mid: string }> }) {
-  const denied = await requireOwner();
-  if (denied) return denied;
   const { id, mid } = await ctx.params;
+  const { denied } = await requireProject(id);
+  if (denied) return denied;
   const { action } = (await req.json()) as { action?: "revision" | "cancel" | "check" };
   try {
     if (action === "revision") await sendRevision(id, mid);

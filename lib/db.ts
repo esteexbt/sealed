@@ -45,8 +45,9 @@ export function mutate<T>(fn: (s: Store) => T): Promise<T> {
   return next;
 }
 
-export function listProjects(): Project[] {
-  return read().projects.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+/** A freelancer's projects, newest first. */
+export function listProjects(ownerId: string): Project[] {
+  return read().projects.filter((p) => p.ownerId === ownerId).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
 const slugify = (t: string) =>
@@ -55,15 +56,16 @@ const slugify = (t: string) =>
 /** Readable URL name for a project, from its title. Later projects with the same title get -2, -3… */
 export function projectSlug(p: Project, all: Project[] = read().projects): string {
   const base = slugify(p.title);
-  const same = all.filter((x) => slugify(x.title) === base);
+  const same = all.filter((x) => x.ownerId === p.ownerId && slugify(x.title) === base);
   const n = same.findIndex((x) => x.id === p.id);
   return n > 0 ? `${base}-${n + 1}` : base;
 }
 
-/** Finds a project by its readable name or its id. */
-export function getProject(idOrSlug: string): Project | undefined {
+/** Finds one of a freelancer's projects by its readable name or its id. */
+export function getProject(idOrSlug: string, ownerId: string): Project | undefined {
   const all = read().projects;
-  return all.find((p) => p.id === idOrSlug) || all.find((p) => projectSlug(p, all) === decodeURIComponent(idOrSlug).toLowerCase());
+  const mine = all.filter((p) => p.ownerId === ownerId);
+  return mine.find((p) => p.id === idOrSlug) || mine.find((p) => projectSlug(p, all) === decodeURIComponent(idOrSlug).toLowerCase());
 }
 
 export function getProjectByToken(t: string): Project | undefined {

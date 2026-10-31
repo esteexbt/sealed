@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireOwner } from "@/lib/auth";
+import { requireProject } from "@/lib/auth";
 import { findMilestone, log, mutate } from "@/lib/db";
 import { runCheck } from "@/lib/check";
 
@@ -7,9 +7,9 @@ const EDITABLE = new Set(["draft", "awaiting_payment", "changes_requested"]);
 
 /** Withdraws a file. It stays on record (with its fingerprint) but leaves the client's view. */
 export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string; mid: string; fid: string }> }) {
-  const denied = await requireOwner();
-  if (denied) return denied;
   const { id, mid, fid } = await ctx.params;
+  const { denied } = await requireProject(id);
+  if (denied) return denied;
   try {
     await mutate((s) => {
       const { milestone } = findMilestone(s, id, mid);

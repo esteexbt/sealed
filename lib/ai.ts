@@ -99,6 +99,7 @@ export async function draftReminder(opts: {
   daysOverdue: number;
   remindersSent: number;
   portalUrl: string;
+  freelancer: string;
 }): Promise<string> {
   const m = model();
   const fallback = offlineReminder(opts);
@@ -107,7 +108,7 @@ export async function draftReminder(opts: {
   const { text } = await generateText({
     model: m,
     system:
-      "You write payment reminders for an independent freelancer. Warm, brief, never passive-aggressive, never grovelling. Plain text, no subject line, no placeholders. Under 90 words. Firmer with each reminder already sent, but always polite. Mention that the files unlock the moment payment goes through.",
+      "You write payment reminders for an independent freelancer. Warm, brief, never passive-aggressive, never grovelling. Plain text, no subject line, no placeholders. Under 90 words. Firmer with each reminder already sent, but always polite. Mention that the files unlock the moment payment goes through. Sign off with the freelancer’s first name.",
     prompt: JSON.stringify(opts),
   });
   return text.trim() || fallback;
@@ -116,9 +117,9 @@ export async function draftReminder(opts: {
 
 /* --------------------- Offline planner (no API key) --------------------- */
 
-function offlineReminder(o: { clientName: string; milestoneTitle: string; amount: string; daysOverdue: number; remindersSent: number; portalUrl: string }) {
+function offlineReminder(o: { clientName: string; milestoneTitle: string; amount: string; daysOverdue: number; remindersSent: number; portalUrl: string; freelancer: string }) {
   const firm = o.remindersSent > 0;
-  return `Hi ${o.clientName},\n\n${firm ? "Following up again on" : "A quick nudge on"} "${o.milestoneTitle}" (${o.amount}), which was due ${o.daysOverdue > 0 ? `${o.daysOverdue} day${o.daysOverdue === 1 ? "" : "s"} ago` : "today"}. Everything is ready on my side, and the files unlock the moment payment goes through:\n${o.portalUrl}\n\n${firm ? "Let me know if anything is holding this up." : "Thanks so much!"}\n${config.freelancerName}`;
+  return `Hi ${o.clientName},\n\n${firm ? "Following up again on" : "A quick nudge on"} "${o.milestoneTitle}" (${o.amount}), which was due ${o.daysOverdue > 0 ? `${o.daysOverdue} day${o.daysOverdue === 1 ? "" : "s"} ago` : "today"}. Everything is ready on my side, and the files unlock the moment payment goes through:\n${o.portalUrl}\n\n${firm ? "Let me know if anything is holding this up." : "Thanks so much!"}\n${o.freelancer}`;
 }
 
 function offlinePlan(brief: string): ScopePlan {

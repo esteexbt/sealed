@@ -114,8 +114,27 @@ export interface Milestone {
   clientSeenAt?: string | null;
 }
 
+export interface User {
+  id: string;
+  /** Lower-cased. */
+  email: string;
+  /** Shown to clients on the portal, invoices and reminders. */
+  name: string;
+  /** scrypt hash "salt:hash"; null for accounts that only use Google or PayPal. */
+  passwordHash: string | null;
+  googleId?: string | null;
+  paypalId?: string | null;
+  /** Where the freelancer gets paid. */
+  paypalEmail?: string | null;
+  /** The shared demo account judges can open without signing up. */
+  demo?: boolean;
+  createdAt: string;
+}
+
 export interface Project {
   id: string;
+  /** The freelancer who owns this project. */
+  ownerId?: string;
   /** unguessable token used in the client portal URL */
   portalToken: string;
   title: string;
@@ -152,6 +171,7 @@ export interface ActivityEvent {
 }
 
 export interface Store {
+  users?: User[];
   projects: Project[];
   activity: ActivityEvent[];
 }

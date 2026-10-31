@@ -1,6 +1,7 @@
 import "server-only";
 import { config, paypalMode } from "./config";
 import { currentFiles, findByOrder, findMilestone, id, isOverdue, log, mutate, read, token } from "./db";
+import { ownerName } from "./auth";
 import * as paypal from "./paypal";
 import { draftReminder } from "./ai";
 import type { Milestone, Project, ScopePlan } from "./types";
@@ -16,9 +17,10 @@ function addDays(days: number) {
   return d.toISOString().slice(0, 10);
 }
 
-export async function createProject(plan: ScopePlan, brief: string): Promise<Project> {
+export async function createProject(plan: ScopePlan, brief: string, ownerId: string): Promise<Project> {
   const project: Project = {
     id: id(),
+    ownerId,
     portalToken: token(),
     title: plan.title.trim() || "Untitled project",
     clientName: plan.clientName.trim() || "Client",
@@ -245,7 +247,7 @@ export async function freelancerCancel(projectId: string, milestoneId: string) {
   const { project, milestone } = findMilestone(s, projectId, milestoneId);
   if (!project || !milestone) throw new Error("Milestone not found");
   if (milestone.status !== "in_review" && milestone.status !== "changes_requested") throw new Error(`${milestone.title} has no hold to release`);
-  return cancelHold(projectId, milestoneId, `${config.freelancerName} cancelled ${milestone.title} and released ${project.clientName}'s PayPal hold.`);
+  return cancelHold(projectId, milestoneId, `${ownerName(project)} cancelled ${milestone.title} and released ${project.clientName}'s PayPal hold.`);
 }
 
 /**
@@ -292,6 +294,7 @@ export async function sendReminder(projectId: string, milestoneId: string, custo
       daysOverdue: days,
       remindersSent: milestone.reminders.length,
       portalUrl: portalUrl(project),
+      freelancer: ownerName(project),
     }));
 
   // Payment always happens in the portal so the unlock stays tied to the capture;
@@ -305,6 +308,7 @@ export async function sendReminder(projectId: string, milestoneId: string, custo
     dueDate: milestone.dueDate < new Date().toISOString().slice(0, 10) ? new Date().toISOString().slice(0, 10) : milestone.dueDate,
     note: `${message}\n\nView and unlock your files: ${portalUrl(project)}`,
     reference: `sealed:${project.id}:${milestone.id}`,
+    invoicerName: ownerName(project),
   });
 
   await mutate((st) => {
@@ -373,9 +377,9 @@ export async function refundMilestone(projectId: string, milestoneId: string) {
   return ref;
 }
 
-export function receivables() {
+export function receivables(ownerId: string) {
   const s = read();
-  const rows = s.projects.flatMap((p) =>
+  const rows = s.projects.filter((p) => p.ownerId === ownerId).flatMap((p) =>
     p.milestones
       .filter((m) => m.status === "awaiting_payment")
       .map((m) => ({

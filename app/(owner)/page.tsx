@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { listProjects, read, isOverdue, outstanding, held, projectSlug } from "@/lib/db";
 import { money, settleDue } from "@/lib/actions";
+import { pageUser } from "@/lib/auth";
 import { MilestoneSeals } from "@/components/MilestoneSeals";
 
 function since(iso: string) {
@@ -13,9 +14,11 @@ function since(iso: string) {
 }
 
 export default async function Dashboard() {
+  const user = await pageUser();
   await settleDue();
-  const projects = listProjects();
-  const activity = read().activity.slice(0, 12);
+  const projects = listProjects(user.id);
+  const mine = new Set(projects.map((p) => p.id));
+  const activity = read().activity.filter((a) => mine.has(a.projectId)).slice(0, 12);
   const currency = projects[0]?.currency || "USD";
   const owed = projects.reduce((a, p) => a + outstanding(p), 0);
   const overdueRows = projects.flatMap((p) => p.milestones.filter((m) => isOverdue(m)).map((m) => ({ p, m })));

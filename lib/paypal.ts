@@ -210,6 +210,8 @@ export interface InvoiceInput {
   dueDate: string;
   note: string;
   reference: string;
+  /** The freelancer's name, shown as the invoice sender. */
+  invoicerName: string;
 }
 
 /** Creates a draft invoice and sends it. Returns the PayPal invoice id. */
@@ -224,7 +226,7 @@ export async function createAndSendInvoice(input: InvoiceInput): Promise<{ invoi
         note: input.note.slice(0, 4000),
         payment_term: { due_date: input.dueDate },
       },
-      invoicer: { name: { given_name: config.freelancerName } },
+      invoicer: { name: { given_name: input.invoicerName } },
       primary_recipients: [
         { billing_info: { name: { full_name: input.clientName }, email_address: input.clientEmail } },
       ],

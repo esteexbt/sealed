@@ -116,5 +116,9 @@ const activity = [
   { kind: "payment_captured", projectId: halo.id, text: "Halo Fitness paid $900 for Final video. Files unlocked.", at: ago(24 * 19) },
 ].map((a) => ({ id: rid(), ...a }));
 
-fs.writeFileSync(path.join(DATA, "store.json"), JSON.stringify({ projects: [bean, kemi, halo], activity }, null, 2));
-console.log(`Seeded 3 projects. Client portal for the demo: /p/${bean.portalToken}`);
+// The demo freelancer. Judges open it from "Try the demo" on the sign-in page; it has no password.
+const demo = { id: rid(), email: "demo@sealed.app", name: "Ada Okafor", passwordHash: null, googleId: null, paypalId: null, paypalEmail: null, demo: true, createdAt: ago(24 * 60) };
+for (const p of [bean, kemi, halo]) p.ownerId = demo.id;
+
+fs.writeFileSync(path.join(DATA, "store.json"), JSON.stringify({ users: [demo], projects: [bean, kemi, halo], activity }, null, 2));
+console.log(`Seeded a demo account (Try the demo on the sign-in page) with 3 projects. Client portal: /p/${bean.portalToken}`);
