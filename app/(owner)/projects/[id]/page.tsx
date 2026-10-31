@@ -73,8 +73,8 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
                   <h2>{m.title}</h2>
                   <p className="small muted">{m.deliverables.join(", ")}</p>
                 </div>
-                <div className="ms-money">
-                  <div className="ms-money-top">
+                <div className="ms-side">
+                  <div className="ms-tools">
                     {files.length > 0 && !["paid", "cancelled", "refunded"].includes(m.status) && !stale && <CheckButton milestoneId={m.id} check={m.check} />}
                     <MilestoneBell
                       milestoneId={m.id}
@@ -85,10 +85,12 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
                       unreadIds={fresh.map((n) => n.id)}
                       reviseBy={m.status === "changes_requested" ? m.reviseBy || null : null}
                     />
-                    <span className="amount">{money(m.amount, p.currency)}</span>
                   </div>
-                  <span className={`status status-${statusClass}`}>{statusLabel(m.status, late)}</span>
-                  <span className="tiny muted">Due {date(m.dueDate)}</span>
+                  <div className="ms-money">
+                    <span className="amount">{money(m.amount, p.currency)}</span>
+                    <span className={`status status-${statusClass}`}>{statusLabel(m.status, late)}</span>
+                    <span className="small muted">Due {date(m.dueDate)}</span>
+                  </div>
                 </div>
               </div>
 

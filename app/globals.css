@@ -209,11 +209,11 @@ p { margin: 0; }
 .ms-top { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; gap: 14px; align-items: start; }
 .ms-n { font-family: var(--serif); font-size: 1.3rem; color: var(--seal); }
 .ms-title h2 { font-size: 1.3rem; }
-.ms-money { display: grid; justify-items: end; gap: 4px; }
-.ms-money .amount { font-size: 1.1rem; }
+.ms-money { display: grid; justify-items: end; gap: 6px; }
+.ms-money .amount { font-size: 1.3rem; line-height: 1.2; }
 .ms-empty { padding-left: 42px; }
 .ms-actions { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; padding-left: 42px; }
-@media (max-width: 560px) { .ms-empty, .ms-actions { padding-left: 0; } .ms-top { grid-template-columns: 24px 1fr; } .ms-money { grid-column: 2; justify-items: start; } }
+@media (max-width: 560px) { .ms-empty, .ms-actions { padding-left: 0; } .ms-top { grid-template-columns: 24px 1fr; } .ms-side { grid-column: 2; } .ms-money { justify-items: start; } }
 .files { list-style: none; margin: 0; padding: 0 0 0 42px; display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 14px; }
 @media (max-width: 560px) { .files { padding-left: 0; } }
 .file { display: grid; gap: 6px; min-width: 0; }
@@ -677,3 +677,16 @@ p { margin: 0; }
 .ci-info .ci-mark { background: var(--muted); }
 @media (max-width: 560px) { .cb-more { display: none; } }
 .cd:focus, .nt:focus { outline: none; }
+
+/* ------------------------------ stage header tools ------------------------------ */
+.ms-side { display: flex; align-items: flex-start; gap: 20px; }
+.ms-tools, .pm-head-tools { display: flex; align-items: center; gap: 12px; padding-top: 2px; }
+.ms-tools:not(:empty) + .ms-money { padding-left: 20px; border-left: 1px solid var(--rule); }
+.bell { width: 42px; height: 42px; }
+.bell svg { width: 21px; height: 21px; }
+.bell-count { top: -6px; right: -7px; min-width: 22px; height: 22px; line-height: 22px; font-size: 0.75rem; padding: 0 6px; }
+.ms-side .status { font-size: 0.85rem; padding: 4px 11px; }
+@media (max-width: 560px) {
+  .ms-side { justify-content: space-between; flex-direction: row-reverse; gap: 16px; margin-top: 6px; }
+  .ms-tools:not(:empty) + .ms-money { padding-left: 0; border-left: 0; }
+}
