@@ -3,13 +3,14 @@ import { notFound } from "next/navigation";
 import { currentFiles, getProject, held, isOverdue } from "@/lib/db";
 import { money, portalUrl, settleDue } from "@/lib/actions";
 import { isStale, refreshInBackground } from "@/lib/check";
-import { formatBytes, statusLabel, when } from "@/lib/format";
+import { statusLabel, when } from "@/lib/format";
 import { ensurePreviews } from "@/lib/files";
 import { CheckCard } from "@/components/CheckCard";
 import { ProjectDial } from "@/components/ProjectDial";
 import { notices, unread } from "@/lib/notify";
 import { LiveRefresh, MilestoneBell, OpenNotices } from "@/components/MilestoneBell";
-import { CopyLink, MilestoneAction, RemindButton, RemoveFile, UploadFiles } from "@/components/ProjectControls";
+import { OwnerFiles } from "@/components/OwnerFiles";
+import { CopyLink, MilestoneAction, RemindButton, UploadFiles } from "@/components/ProjectControls";
 
 const date = (d: string) => new Date(d + (d.length === 10 ? "T12:00:00Z" : "")).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 const EDITABLE = new Set(["draft", "awaiting_payment", "changes_requested"]);
@@ -108,27 +109,24 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
               {m.status === "cancelled" && <p className="ms-note">Cancelled. The client’s PayPal hold was released back to them.</p>}
 
               {files.length > 0 ? (
-                <ul className="files">
-                  {files.map((f) => (
-                    <li key={f.id} className="file">
-                      {f.previewKey ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={`/api/files/${f.id}?variant=${f.mime === "application/pdf" || f.mime === "image/svg+xml" ? "page" : "full"}`} alt="" className="file-thumb" />
-                      ) : (
-                        <span className="file-thumb file-generic">{f.name.split(".").pop()?.toUpperCase()}</span>
-                      )}
-                      <span className="file-meta">
-                        <span className="file-name" title={f.name}>{f.name}</span>
-                        <span className="tiny muted">
-                          {f.pages ? `PDF, ${f.pages} page${f.pages === 1 ? "" : "s"}, ` : f.width ? `${f.width}×${f.height}, ` : ""}
-                          {formatBytes(f.size)}
-                        </span>
-                        {f.sha256 && <span className="tiny muted" title={`SHA-256 ${f.sha256}`}>Fingerprint {f.sha256.slice(0, 10)}</span>}
-                      </span>
-                      {editable && <RemoveFile projectId={p.id} milestoneId={m.id} fileId={f.id} name={f.name} />}
-                    </li>
-                  ))}
-                </ul>
+                <OwnerFiles
+                  projectId={p.id}
+                  milestoneId={m.id}
+                  editable={editable}
+                  files={files.map((f) => ({
+                    id: f.id,
+                    name: f.name,
+                    size: f.size,
+                    width: f.width || null,
+                    height: f.height || null,
+                    pages: f.pages || null,
+                    sha256: f.sha256 || null,
+                    uploadedAt: f.uploadedAt,
+                    pdf: f.mime === "application/pdf",
+                    svg: f.mime === "image/svg+xml",
+                    hasPreview: Boolean(f.previewKey),
+                  }))}
+                />
               ) : (
                 <p className="small muted ms-empty">No files yet. Add the deliverables: your client sees them sealed, with an AI check against what you agreed, before they pay.</p>
               )}

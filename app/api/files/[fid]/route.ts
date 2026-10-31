@@ -47,7 +47,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ fid: string }> 
       }
       if (variant === "page") {
         if (!isPdf(f.mime, f.name) && !isSvg(f.mime, f.name)) return new Response("No page view for this file.", { status: 400 });
-        const png = await sharp(await reviewSource(f, 1)).resize({ width: 900, height: 900, fit: "inside" }).jpeg({ quality: 82 }).toBuffer();
+        const png = await sharp(await reviewSource(f, 1)).resize({ width: 900, height: 900, fit: "inside" }).flatten({ background: "#ffffff" }).jpeg({ quality: 82 }).toBuffer();
         return new Response(new Uint8Array(png), { headers: { "Content-Type": "image/jpeg", "Cache-Control": "private, max-age=300" } });
       }
       // Delivered files are untrusted. Only raster images may display inline; everything

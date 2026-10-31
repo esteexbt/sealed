@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { FileDetails, type FileFacts } from "./FileDialog";
 import { useScrollLock } from "./useScrollLock";
 
 interface Session {
@@ -49,7 +50,7 @@ async function bitmapFrom(res: Response, key: string) {
  * The bytes arrive scrambled and keyed; the image only exists, reassembled,
  * inside this canvas, and is wiped when the viewer closes or the session ends.
  */
-export function SecureViewer({ token, fileId, fileName, onClose }: { token: string; fileId: string; fileName: string; onClose: () => void }) {
+export function SecureViewer({ token, fileId, fileName, facts, onClose }: { token: string; fileId: string; fileName: string; facts?: FileFacts; onClose: () => void }) {
   const [page, setPage] = useState(1);
   const canvas = useRef<HTMLCanvasElement>(null);
   const lensCanvas = useRef<HTMLCanvasElement>(null);
@@ -376,6 +377,7 @@ export function SecureViewer({ token, fileId, fileName, onClose }: { token: stri
               {state === "ready" && <li>Closes in {mins}:{String(secs).padStart(2, "0")}.</li>}
             </ul>
             {error && state === "ready" && <p className="error tiny">{error}</p>}
+            {facts && <FileDetails f={facts} />}
           </aside>
         </div>
       </div>

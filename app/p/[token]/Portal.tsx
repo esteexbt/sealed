@@ -10,6 +10,7 @@ import type { DeliveryCheck, MilestoneStatus } from "@/lib/types";
 import type { Notice } from "@/lib/notify";
 import { LiveRefresh, MilestoneBell } from "@/components/MilestoneBell";
 import { ProjectDial } from "@/components/ProjectDial";
+import { DownloadIcon, EyeIcon, FileDialog, fileType } from "@/components/FileDialog";
 
 export interface PortalFile {
   id: string;
@@ -134,7 +135,15 @@ export function Portal(props: Props) {
         <span className="portal-by">Protected by <Logo height={16} label="Sealed" /></span>
         Payments are processed and held by PayPal. {props.freelancer} never sees your card or bank details.
       </footer>
-      {viewing && <SecureViewer token={props.token} fileId={viewing.id} fileName={viewing.name} onClose={() => setViewing(null)} />}
+      {viewing && (
+        <SecureViewer
+          token={props.token}
+          fileId={viewing.id}
+          fileName={viewing.name}
+          facts={{ name: viewing.name, type: fileType(viewing.name, viewing), size: viewing.size, width: viewing.width, height: viewing.height, pages: viewing.pages, sha256: viewing.sha256 }}
+          onClose={() => setViewing(null)}
+        />
+      )}
     </div>
   );
 }
@@ -153,6 +162,7 @@ function MilestoneBlock({
 }: Props & { m: PortalMilestone; index: number; fmt: (n: number) => string; emphasis: boolean; onView: (f: PortalFile) => void }) {
   const router = useRouter();
   const [opening, setOpening] = useState(false); // approve animation in flight
+  const [openFile, setOpenFile] = useState<PortalFile | null>(null);
   const [revealed, setRevealed] = useState(m.status === "paid");
   const [asking, setAsking] = useState(false);
   const [busy, setBusy] = useState<"" | "approve" | "changes" | "cancel">("");
@@ -229,53 +239,46 @@ function MilestoneBlock({
       {m.status === "paid" && m.releasedBy === "auto" && <p className="small muted">Released automatically after the review window ended.</p>}
 
       {m.files.length > 0 && m.status !== "cancelled" && m.status !== "refunded" ? (
-        <ul className="pm-files">
-          {m.files.map((f) => (
-            <li key={f.id} className="pm-file">
-              <div className="pm-frame">
-                {f.hasPreview ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={`/api/files/${f.id}?t=${token}&variant=${revealed ? (f.pdf ? "page" : "full") : "preview"}`}
-                    alt={revealed ? f.name : `${f.name}, sealed preview`}
-                    className={revealed ? "pm-img pm-img-full" : "pm-img"}
-                    draggable={false}
-                    onContextMenu={(e) => !revealed && e.preventDefault()}
-                  />
-                ) : (
-                  <span className="pm-generic">{f.name.split(".").pop()?.toUpperCase()}</span>
+        <ul className="files pm-files">
+          {m.files.map((f) => {
+            const canReview = reviewing && !opening && f.reviewable;
+            const thumb = f.hasPreview ? `/api/files/${f.id}?t=${token}&variant=${revealed ? (f.pdf || f.svg ? "page" : "full") : "preview"}` : null;
+            return (
+              <li key={f.id} className="pt">
+                <button
+                  type="button"
+                  className={`ft${revealed ? " ft-open" : ""}`}
+                  onClick={() => (canReview ? onView(f) : setOpenFile(f))}
+                  title={f.name}
+                  aria-label={canReview ? `Review ${f.name}` : `Open ${f.name}`}
+                  onContextMenu={(e) => !revealed && e.preventDefault()}
+                >
+                  {thumb ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={thumb} alt="" className={revealed ? "pm-img-full" : undefined} draggable={false} />
+                  ) : (
+                    <span className="ft-generic">{fileType(f.name, f)}</span>
+                  )}
+                  <span className="ft-type">{f.pdf ? "PDF" : f.svg ? "SVG" : (f.name.split(".").pop() || "").toUpperCase()}</span>
+                  {!revealed && (
+                    <span className="pm-seal">
+                      <Seal size={44} broken={opening} halo />
+                    </span>
+                  )}
+                  {canReview && (
+                    <span className="ft-chip">
+                      <EyeIcon size={14} /> Review
+                    </span>
+                  )}
+                </button>
+                {revealed && (
+                  <a className="ft-dl" href={`/api/files/${f.id}?t=${token}&variant=full&download=1`} download={f.name} aria-label={`Download ${f.name}`} title={`Download ${f.name}`}>
+                    <DownloadIcon size={16} />
+                  </a>
                 )}
-                {!revealed && (
-                  <span className="pm-seal">
-                    <Seal size={50} broken={opening} halo />
-                  </span>
-                )}
-                {reviewing && !opening && f.reviewable && (
-                  <button type="button" className="pm-review" onClick={() => onView(f)}>
-                    Review full work
-                  </button>
-                )}
-              </div>
-              {revealed ? (
-                <a className="pm-dl" href={`/api/files/${f.id}?t=${token}&variant=full&download=1`} download={f.name}>
-                  <span className="pm-dl-text">
-                    <span className="pm-file-name" title={f.name}>{f.name}</span>
-                    <span className="tiny muted" title={`${fileKind(f)} · ${formatSize(f.size)}`}>{f.pdf ? "PDF" : f.svg ? "SVG" : f.name.split(".").pop()?.toUpperCase()} · {formatSize(f.size)}</span>
-                  </span>
-                  <span className="pm-dl-icon" aria-hidden>
-                    <DownloadIcon />
-                  </span>
-                  <span className="sr-only">Download</span>
-                </a>
-              ) : (
-                <div className="pm-file-meta">
-                  <span className="pm-file-name" title={f.name}>{f.name}</span>
-                  <span className="tiny muted">{fileKind(f)}</span>
-                </div>
-              )}
-              {f.sha256 && <span className="pm-hash tiny muted" title={`SHA-256 ${f.sha256}`}>Fingerprint {f.sha256.slice(0, 10)}</span>}
-            </li>
-          ))}
+              </li>
+            );
+          })}
         </ul>
       ) : m.status === "cancelled" || m.status === "refunded" ? (
         <p className="small muted pm-wait">{m.status === "cancelled" ? "Cancelled. The PayPal hold was released back to you, so you weren’t charged." : "Refunded through PayPal."}</p>
@@ -335,6 +338,30 @@ function MilestoneBlock({
         )}
       </div>
 
+      {openFile && (
+        <FileDialog
+          f={{ name: openFile.name, type: fileType(openFile.name, openFile), size: openFile.size, width: openFile.width, height: openFile.height, pages: openFile.pages, sha256: openFile.sha256 }}
+          src={openFile.hasPreview ? `/api/files/${openFile.id}?t=${token}&variant=${revealed ? (openFile.pdf || openFile.svg ? "page" : "full") : "preview"}` : null}
+          sealed={!revealed}
+          note={
+            revealed
+              ? null
+              : m.status === "awaiting_payment"
+                ? `This is a sealed preview. Pay into the PayPal hold to review the full work before ${freelancer} is paid.`
+                : !openFile.reviewable
+                  ? "This file type can’t be previewed. It unlocks for download when you approve."
+                  : null
+          }
+          actions={
+            revealed ? (
+              <a className="btn btn-seal" href={`/api/files/${openFile.id}?t=${token}&variant=full&download=1`} download={openFile.name}>
+                <DownloadIcon /> Download
+              </a>
+            ) : null
+          }
+          onClose={() => setOpenFile(null)}
+        />
+      )}
       {asking && m.status === "in_review" && (
         <ChangeRequestDialog
           milestoneTitle={m.title}
@@ -453,23 +480,3 @@ function PayButton({
     </div>
   );
 }
-
-function fileKind(f: PortalFile) {
-  if (f.pdf) return `PDF · ${f.pages || 1} page${(f.pages || 1) === 1 ? "" : "s"}`;
-  if (f.svg) return "SVG vector";
-  const ext = f.name.split(".").pop()?.toUpperCase() || "File";
-  return f.width ? `${ext} · ${f.width}×${f.height}` : ext;
-}
-
-function formatSize(n: number) {
-  return n < 1024 * 1024 ? `${Math.max(1, Math.round(n / 1024))} KB` : `${(n / 1024 / 1024).toFixed(1)} MB`;
-}
-
-function DownloadIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M8 2.5v8M4.5 7 8 10.5 11.5 7M3 13.5h10" />
-    </svg>
-  );
-}
-
