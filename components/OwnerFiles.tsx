@@ -71,7 +71,7 @@ export function OwnerFiles({ projectId, milestoneId, files, editable }: { projec
           onClose={() => setOpen(null)}
           actions={
             <>
-              <a className="btn btn-ghost" href={`/api/files/${open.id}?variant=full&download=1`} download={open.name}>
+              <a className="btn btn-seal" href={`/api/files/${open.id}?variant=full&download=1`} download={open.name}>
                 <DownloadIcon /> Download original
               </a>
               {editable && (
