@@ -161,15 +161,21 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
                   <MilestoneAction projectId={p.id} milestoneId={m.id} action="check" label="Check again" busyLabel="Checking…" tone="quiet" />
                 )}
                 {m.status === "paid" && m.payment && (
-                  <span className="paid-line small">
-                    <span className="seal-open" aria-hidden />
-                    {m.payment.releasedBy === "auto" ? "Released automatically" : m.payment.authorizationId ? "Approved and released" : "Paid"}{" "}
-                    {m.payment.capturedAt ? date(m.payment.capturedAt.slice(0, 10)) : ""} via PayPal
-                    <span className="tiny muted">capture {m.payment.captureId}</span>
-                    {m.payment.captureStatus === "PENDING" && (
-                      <span className="tiny" style={{ color: "var(--warn)" }}>PayPal is still clearing this payment. It reaches your balance once cleared.</span>
-                    )}
-                  </span>
+                  <div className="paid-line">
+                    <span className="paid-check" aria-hidden>
+                      <svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M4.5 10.5l3.6 3.5 7.4-8" /></svg>
+                    </span>
+                    <div className="paid-text">
+                      <strong>
+                        {m.payment.releasedBy === "auto" ? "Released automatically" : m.payment.authorizationId ? "Approved and released" : "Paid"}
+                        {m.payment.capturedAt ? ` ${date(m.payment.capturedAt.slice(0, 10))}` : ""} via PayPal
+                      </strong>
+                      <span className="tiny muted">PayPal capture {m.payment.captureId}</span>
+                      {m.payment.captureStatus === "PENDING" && (
+                        <span className="tiny" style={{ color: "var(--warn)" }}>PayPal is still clearing this payment. It reaches your balance once cleared.</span>
+                      )}
+                    </div>
+                  </div>
                 )}
                 {m.reminders.length > 0 && m.status === "awaiting_payment" && (
                   <span className="tiny muted">

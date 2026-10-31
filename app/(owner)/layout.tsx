@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { isOwner } from "@/lib/auth";
 import { paypalMode, aiMode } from "@/lib/config";
-import { Nav } from "@/components/Nav";
+import { BottomNav, Nav } from "@/components/Nav";
 import { Logo } from "@/components/Seal";
 import { DialogProvider } from "@/components/Dialog";
 
@@ -20,9 +20,10 @@ export default async function OwnerLayout({ children }: { children: React.ReactN
         <span className="mode-pill" title="Payment and AI mode">
           {paypalMode === "sandbox" ? "PayPal sandbox" : "PayPal simulation"}, {aiMode === "offline" ? "offline AI" : "live AI"}
         </span>
-        <Link href="/new" className="btn btn-ink">New project</Link>
+        <Link href="/new" className="btn btn-ink topbar-new">New project</Link>
       </header>
       <main className="page">{children}</main>
+      <BottomNav />
     </DialogProvider>
   );
 }
