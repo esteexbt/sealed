@@ -5,7 +5,7 @@ import { money, portalUrl, settleDue } from "@/lib/actions";
 import { isStale, refreshInBackground } from "@/lib/check";
 import { statusLabel, when } from "@/lib/format";
 import { ensurePreviews } from "@/lib/files";
-import { CheckCard } from "@/components/CheckCard";
+import { CheckButton, CheckCard } from "@/components/CheckCard";
 import { ProjectDial } from "@/components/ProjectDial";
 import { notices, unread } from "@/lib/notify";
 import { LiveRefresh, MilestoneBell, OpenNotices } from "@/components/MilestoneBell";
@@ -75,6 +75,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
                 </div>
                 <div className="ms-money">
                   <div className="ms-money-top">
+                    {files.length > 0 && !["paid", "cancelled", "refunded"].includes(m.status) && !stale && <CheckButton milestoneId={m.id} check={m.check} />}
                     <MilestoneBell
                       milestoneId={m.id}
                       milestoneTitle={m.title}
@@ -133,7 +134,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
 
               {files.length > 0 && m.status !== "paid" && m.status !== "cancelled" && m.status !== "refunded" && (
                 <div className="ms-check">
-                  <CheckCard check={stale ? null : m.check} pending={stale} audience="freelancer" />
+                  <CheckCard check={stale ? null : m.check} pending={stale} audience="freelancer" milestoneId={m.id} />
                 </div>
               )}
 

@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Logo, Seal } from "@/components/Seal";
 import { SecureViewer } from "@/components/SecureViewer";
-import { CheckCard } from "@/components/CheckCard";
+import { CheckButton, CheckCard } from "@/components/CheckCard";
 import { ChangeRequestDialog } from "@/components/ChangeRequestDialog";
 import type { DeliveryCheck, MilestoneStatus } from "@/lib/types";
 import type { Notice } from "@/lib/notify";
@@ -207,16 +207,19 @@ function MilestoneBlock({
           <h2>{m.title}</h2>
           <p className="small muted">{m.description || m.deliverables.join(", ")}</p>
         </div>
-        <MilestoneBell
-          milestoneId={m.id}
-          milestoneTitle={m.title}
-          from={freelancer}
-          items={m.updates}
-          unreadIds={m.unreadIds}
-          audience="client"
-          seenUrl="/api/portal"
-          seenBody={{ token, milestoneId: m.id, action: "seen" }}
-        />
+        <div className="pm-head-tools">
+          {(m.status === "awaiting_payment" || reviewing) && m.files.length > 0 && !m.checkPending && <CheckButton milestoneId={m.id} check={m.check} />}
+          <MilestoneBell
+            milestoneId={m.id}
+            milestoneTitle={m.title}
+            from={freelancer}
+            items={m.updates}
+            unreadIds={m.unreadIds}
+            audience="client"
+            seenUrl="/api/portal"
+            seenBody={{ token, milestoneId: m.id, action: "seen" }}
+          />
+        </div>
       </div>
 
       {m.status === "in_review" && !opening && (
@@ -286,7 +289,7 @@ function MilestoneBlock({
         <p className="small muted pm-wait">In progress. Expected by {day(m.dueDate)}. You’ll pay once there’s work to review.</p>
       )}
 
-      {(m.status === "awaiting_payment" || reviewing) && m.files.length > 0 && <CheckCard check={m.check} pending={m.checkPending} audience="client" />}
+      {(m.status === "awaiting_payment" || reviewing) && m.files.length > 0 && <CheckCard check={m.check} pending={m.checkPending} audience="client" milestoneId={m.id} />}
 
       <div className="pm-pay">
         <div className="pm-price">
