@@ -20,8 +20,9 @@ export default async function AssistantPage({ searchParams }: { searchParams: Pr
   const suggestions = [
     "Who owes me money?",
     overdue[0] ? `Remind ${overdue[0].p.clientName} about ${money(overdue[0].m.amount, overdue[0].p.currency)}` : null,
+    projects.some((p) => p.agreement && p.agreement.status !== "agreed") ? "Which clients haven't approved their plan?" : null,
     holding > 0 ? "What is PayPal holding for me?" : null,
-    "What did I collect this month?",
+    projects.some((p) => p.milestones.some((m) => m.payment?.payout)) ? "What's been sent to my PayPal?" : "What did I collect this month?",
   ].filter(Boolean) as string[];
 
   return (

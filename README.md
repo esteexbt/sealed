@@ -45,6 +45,10 @@ What is made hard:
 
 What no website can do: stop someone photographing their screen, or a determined developer reading pixels from their own browser. That is why the guarantee rests on the original never being sent, and the watermark makes any copy of the review copy traceable.
 
+## Plan approval
+
+Before anything is paid, the client approves the plan (stages, deliverables, prices, dates) or asks for changes. Checkout is refused until it's approved. If the freelancer later changes an approved plan, it goes back to the client, who sees exactly what changed. See `lib/plan.ts`.
+
 ## How PayPal is used
 
 | Capability | API | Where |
@@ -52,6 +56,7 @@ What no website can do: stop someone photographing their screen, or a determined
 | Client checkout into a hold | JS SDK Buttons (`intent=authorize`) + **Orders v2** create / authorize | `app/p/[token]/Portal.tsx`, `lib/paypal.ts` |
 | Release on approval or after the review window | **Payments v2** authorization capture | `lib/actions.ts` → `release`, `settleDue` |
 | Cancel without charging | **Payments v2** authorization void | `lib/actions.ts` → `cancelHold` |
+| Paying the freelancer | **Payouts v1**: the freelancer's share (capture net of PayPal's fee) is sent to the PayPal email in their profile; waiting, failed and pending payouts are tracked and retried | `lib/actions.ts` → `payOut`, `retryPayouts`, `refreshPayouts` |
 | Payment-gated delivery | Server-side authorization verification (status, `custom_id`, amount, currency); originals served only after capture | `lib/actions.ts` → `completeCheckout`, `app/api/files` |
 | Payment reminders | **Invoicing v2** create + send | `lib/paypal.ts` → `createAndSendInvoice` |
 | Refunds | **Payments v2** capture refund | `lib/paypal.ts` → `refundCapture` |

@@ -26,7 +26,7 @@ const SYSTEM = (u: User) => `You are Sealed's money assistant for ${u.name}, an 
 You can see their projects, milestones and payments in Sealed, and act on their PayPal ${paypalMode === "sandbox" ? "sandbox " : ""}account.
 Today is ${new Date().toISOString().slice(0, 10)}.
 
-How payments work in Sealed: when work is delivered, the client pays into a PayPal hold (status in_review). Money moves to the freelancer only when the client approves, or automatically after 3 days. During review the client can request changes (status changes_requested); the hold stays until a revision is sent. "Owed" means awaiting_payment; "held" means in_review or changes_requested.
+How payments work in Sealed: first the client approves the plan (the stages, prices and dates); plan status is "pending" (waiting for the client), "changes" (the client asked for changes; their note is included) or "agreed". Nothing can be paid until it's agreed, and changing an agreed plan sends it back for approval. When work is delivered, the client pays into a PayPal hold (status in_review). Money moves to the freelancer only when the client approves, or automatically after 3 days. During review the client can request changes (status changes_requested); the hold stays until a revision is sent. "Owed" means awaiting_payment; "held" means in_review or changes_requested. After release, Sealed sends the freelancer's share (after PayPal's fee) to their PayPal email with PayPal Payouts; payout status is sent, pending, waiting_email (they haven't added a PayPal email) or failed.
 
 How you work:
 - Answer with real numbers from your tools, never guesses. Lead with the answer.
@@ -51,6 +51,7 @@ function sealedTools(u: User) {
           client: p.clientName,
           clientEmail: p.clientEmail,
           portal: portalUrl(p),
+          plan: p.agreement ? { status: p.agreement.status, clientRequest: p.agreement.request?.note || null } : { status: "agreed", clientRequest: null },
           milestones: p.milestones.map((m) => ({
             milestoneId: m.id,
             title: m.title,
@@ -59,8 +60,25 @@ function sealedTools(u: User) {
             dueDate: m.dueDate,
             overdue: isOverdue(m),
             files: m.files.length,
+            payout: m.payment?.payout ? { status: m.payment.payout.status, amount: money(m.payment.payout.amount, p.currency), to: m.payment.payout.email } : null,
           })),
         })),
+    }),
+    list_payouts: tool({
+      description: "List money released to the freelancer and where it went: amount sent to their PayPal, status (sent, pending, waiting_email, failed) and date.",
+      parameters: z.object({}),
+      execute: async () =>
+        listProjects(u.id).flatMap((p) =>
+          p.milestones
+            .filter((m) => m.status === "paid")
+            .map((m) => ({
+              client: p.clientName,
+              milestone: m.title,
+              paid: money(m.amount, p.currency),
+              releasedAt: m.payment?.capturedAt?.slice(0, 10) || null,
+              payout: m.payment?.payout ? { status: m.payment.payout.status, amount: money(m.payment.payout.amount, p.currency), to: m.payment.payout.email, error: m.payment.payout.error || null } : { status: "kept in Sealed's PayPal account" },
+            })),
+        ),
     }),
     send_payment_reminder: tool({
       description:
@@ -132,12 +150,13 @@ function paypalTools(): Record<string, Tool> {
   return toolkit.getTools() as Record<string, Tool>;
 }
 
-const SEALED_TOOL_NAMES = new Set(["list_receivables", "list_projects", "send_payment_reminder", "refund_milestone"]);
+const SEALED_TOOL_NAMES = new Set(["list_receivables", "list_projects", "list_payouts", "send_payment_reminder", "refund_milestone"]);
 
 function summarize(name: string, args: unknown, result: unknown): string {
   const r = result as Record<string, unknown> | unknown[] | undefined;
   if (name === "list_receivables" && Array.isArray(r)) return `${r.length} milestone${r.length === 1 ? "" : "s"} awaiting payment`;
   if (name === "list_projects" && Array.isArray(r)) return `${r.length} project${r.length === 1 ? "" : "s"}`;
+  if (name === "list_payouts" && Array.isArray(r)) return `${r.length} released payment${r.length === 1 ? "" : "s"}`;
   if (r && !Array.isArray(r) && typeof r === "object" && "status" in r) return String(r.status);
   void args;
   return "done";
@@ -182,6 +201,37 @@ async function offlineAgent(messages: CoreMessage[], u: User): Promise<AgentRepl
   const last = messages.at(-1);
   const text = (typeof last?.content === "string" ? last.content : "").toLowerCase();
   const rows = receivables(u.id);
+
+  if (/\bplans?\b|signed off|sign-off/.test(text)) {
+    const ps = listProjects(u.id);
+    const waiting = ps.filter((p) => p.agreement?.status === "pending");
+    const changes = ps.filter((p) => p.agreement?.status === "changes");
+    const steps: AgentStep[] = [{ tool: "list_projects", source: "sealed", summary: `${ps.length} projects` }];
+    if (!waiting.length && !changes.length) return { text: "Every client has approved their plan. Nothing is waiting on a sign-off.", steps };
+    const lines = [
+      ...changes.map((p) => `- ${p.clientName} asked for changes to ${p.title}: “${p.agreement!.request?.note || ""}”`),
+      ...waiting.map((p) => `- ${p.clientName} hasn't approved ${p.title} yet (sent ${new Date(p.agreement!.sentAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })})`),
+    ];
+    return {
+      text: `${changes.length ? `${changes.length} client${changes.length === 1 ? " wants" : "s want"} changes` : ""}${changes.length && waiting.length ? ", and " : ""}${waiting.length ? `${waiting.length} plan${waiting.length === 1 ? " is" : "s are"} waiting for approval` : ""}. They can't pay until they approve.\n${lines.join("\n")}`,
+      steps,
+    };
+  }
+
+  if (/payout|sent to (me|my)|my paypal|paid out|transfer/.test(text)) {
+    const paid = listProjects(u.id).flatMap((p) => p.milestones.filter((m) => m.status === "paid" && m.payment?.payout).map((m) => ({ p, m, o: m.payment!.payout! })));
+    const steps: AgentStep[] = [{ tool: "list_payouts", source: "sealed", summary: `${paid.length} payouts` }];
+    if (!paid.length) return { text: "No payouts yet. When a client approves a stage, your share is sent to the PayPal email in your profile.", steps };
+    const cur = paid[0].p.currency;
+    const sent = paid.filter((x) => x.o.status === "sent");
+    const waiting = paid.filter((x) => x.o.status === "waiting_email");
+    const failed = paid.filter((x) => x.o.status === "failed");
+    const lines = paid.map((x) => `- ${x.p.clientName}, ${x.m.title}: ${money(x.o.amount, cur)} ${x.o.status === "sent" ? `sent to ${x.o.email}` : x.o.status === "pending" ? "on its way" : x.o.status === "waiting_email" ? "waiting for your PayPal email" : `failed: ${x.o.error || "PayPal refused it"}`}`);
+    return {
+      text: `${money(sent.reduce((a, x) => a + x.o.amount, 0), cur)} has been sent to your PayPal so far.${waiting.length ? ` ${money(waiting.reduce((a, x) => a + x.o.amount, 0), cur)} is waiting: add your PayPal email in My account and it goes out straight away.` : ""}${failed.length ? ` ${failed.length} payout${failed.length === 1 ? "" : "s"} failed; open the project to try again.` : ""}\n${lines.join("\n")}`,
+      steps,
+    };
+  }
 
   if (/who owes|outstanding|unpaid|owed|receivable|overdue|money/.test(text)) {
     if (!rows.length) return { text: "Nobody owes you anything right now. Every milestone is paid.", steps: [{ tool: "list_receivables", source: "sealed", summary: "0 awaiting payment" }] };
@@ -245,7 +295,7 @@ async function offlineAgent(messages: CoreMessage[], u: User): Promise<AgentRepl
   }
 
   return {
-    text: "I can tell you who owes you money, what PayPal is holding, what you collected this month, or send a client a payment reminder. Try one of the suggestions below.",
+    text: "I can tell you who owes you money, what PayPal is holding, which clients haven't approved their plan, what's been sent to your PayPal, or send a client a payment reminder. Try one of the suggestions below.",
     steps: [],
   };
 }

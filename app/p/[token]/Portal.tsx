@@ -11,6 +11,7 @@ import type { Notice } from "@/lib/notify";
 import { LiveRefresh, MilestoneBell } from "@/components/MilestoneBell";
 import { ProjectDial } from "@/components/ProjectDial";
 import { DownloadIcon, EyeIcon, FileDialog, fileType } from "@/components/FileDialog";
+import { LegalLinks } from "@/components/LegalLinks";
 import { ClientReceipt, type ClientReceiptData } from "@/components/ClientReceipt";
 
 export interface PortalFile {
@@ -163,6 +164,7 @@ export function Portal(props: Props) {
       <footer className="portal-foot tiny muted">
         <span className="portal-by">Protected by <Logo height={16} label="Sealed" /></span>
         Payments are processed and held by PayPal. {props.freelancer} never sees your card or bank details.
+        <LegalLinks />
       </footer>
       {viewing && (
         <SecureViewer

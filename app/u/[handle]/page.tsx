@@ -6,6 +6,7 @@ import { publicProfile, userByHandle } from "@/lib/profile";
 import { Logo } from "@/components/Seal";
 import { SocialIcon, Stars } from "@/components/SocialIcon";
 import { ShareProfile } from "@/components/ShareProfile";
+import { LegalLinks } from "@/components/LegalLinks";
 
 export const dynamic = "force-dynamic";
 
@@ -120,6 +121,7 @@ export default async function FreelancerProfile({ params }: { params: Promise<{ 
           <Logo height={20} />
         </Link>
         <p className="tiny muted">Payments held by PayPal until the client approves the work.</p>
+        <LegalLinks />
       </footer>
     </main>
   );

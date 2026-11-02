@@ -1,5 +1,7 @@
 "use client";
 
+import { LegalLinks } from "@/components/LegalLinks";
+
 import { useState } from "react";
 import { Logo } from "@/components/Seal";
 
@@ -125,6 +127,7 @@ export function AuthForm({ google, paypal, demo, initialError, initialMode }: { 
         )}
       </section>
       <p className="tiny muted auth-foot">Clients never need an account. They open the private link you send them.</p>
+      <LegalLinks />
     </main>
   );
 }

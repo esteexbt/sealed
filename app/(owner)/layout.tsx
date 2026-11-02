@@ -6,6 +6,7 @@ import { Logo } from "@/components/Seal";
 import { DialogProvider } from "@/components/Dialog";
 import { AccountMenu } from "@/components/AccountMenu";
 import { NavProgress } from "@/components/NavProgress";
+import { LegalLinks } from "@/components/LegalLinks";
 import { Suspense } from "react";
 
 export const dynamic = "force-dynamic";
@@ -33,6 +34,9 @@ export default async function OwnerLayout({ children }: { children: React.ReactN
         </div>
       </header>
       <main className="page">{children}</main>
+      <footer className="owner-foot">
+        <LegalLinks />
+      </footer>
       <BottomNav account={<AccountMenu variant="tab" name={user.name} email={user.email} initials={initials(user.name)} avatar={avatar} status={status} />} />
     </DialogProvider>
   );

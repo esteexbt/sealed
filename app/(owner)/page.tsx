@@ -51,6 +51,18 @@ export default async function Dashboard() {
           <span className="pay-nudge-go">Add it</span>
         </Link>
       )}
+      {projects.filter((p) => p.agreement?.status === "changes").map((p) => (
+        <Link key={p.id} href={`/projects/${projectSlug(p)}`} className="plan-alert">
+          <span className="plan-alert-ic" aria-hidden>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 5h14v10H9l-4 4V5Z" /></svg>
+          </span>
+          <span className="plan-alert-text">
+            <strong>{p.clientName} asked for changes to the plan</strong>
+            <span>“{p.agreement!.request?.note}”</span>
+          </span>
+          <span className="plan-alert-go">Update the plan</span>
+        </Link>
+      ))}
       <section className="dash-hero">
         <h1>
           {owed > 0 ? <>You’re owed {money(owed, currency)}.</> : <>Everyone has paid.</>}
@@ -97,7 +109,11 @@ export default async function Dashboard() {
                 <li key={p.id}>
                   <Link href={`/projects/${projectSlug(p)}`} className="project-row" prefetch={false}>
                     <div className="project-row-main">
-                      <span className="project-client">{p.clientName}</span>
+                      <span className="project-client">
+                        {p.clientName}
+                        {p.agreement?.status === "changes" && <span className="plan-pill plan-pill-changes">Changes asked</span>}
+                        {p.agreement?.status === "pending" && <span className="plan-pill plan-pill-pending">Plan not approved yet</span>}
+                      </span>
                       <span className="project-title">{p.title}</span>
                     </div>
                     <MilestoneSeals milestones={p.milestones} />
