@@ -204,7 +204,10 @@ export function ProfileForm({
             <p className="small muted">Share it with new clients so they can check your track record before they hire you.</p>
           </header>
           <div className="acc-link">
-            <span className="acc-link-base">{baseUrl.replace(/^https?:\/\//, "")}</span>
+            <span className="acc-link-base">
+              <span className="acc-link-full">{baseUrl.replace(/^https?:\/\//, "")}</span>
+              <span className="acc-link-short">/u/</span>
+            </span>
             <input className="input" value={handle} onChange={(e) => setHandle(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))} disabled={user.demo} aria-label="Profile link name" maxLength={30} />
           </div>
         </section>

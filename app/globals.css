@@ -1328,3 +1328,17 @@ p { margin: 0; }
 .owner-foot { padding: 8px 16px 36px; }
 @media (max-width: 720px) { .owner-foot { padding-bottom: 110px; } }
 .doc-body h2, .doc-steps h2 { color: var(--ink); }
+
+/* Phones: nothing on the profile may push the page wider than the screen */
+.acc { grid-template-columns: minmax(0, 1fr); }
+.acc > * { min-width: 0; }
+.acc-meta > * { overflow-wrap: anywhere; }
+.acc-link-base { overflow: hidden; text-overflow: ellipsis; min-width: 0; flex-shrink: 1; max-width: 62%; }
+.acc-link-short { display: none; }
+@media (max-width: 480px) { .acc-link-full { display: none; } .acc-link-short { display: inline; } .acc-link-base { max-width: none; } }
+.acc-form, .acc-card { grid-template-columns: minmax(0, 1fr); }
+.acc-form > *, .acc-card > *, .acc-grid > *, .acc-card .field { min-width: 0; }
+.acc-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (max-width: 620px) { .acc-grid { grid-template-columns: minmax(0, 1fr); } }
+.field { grid-template-columns: minmax(0, 1fr); }
+.field > * { min-width: 0; }
