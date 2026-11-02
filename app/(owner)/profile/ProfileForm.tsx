@@ -224,8 +224,8 @@ export function ProfileForm({
 
         <section className="acc-card">
           <header>
-            <h2>Getting paid</h2>
-            <p className="small muted">The PayPal account your payments belong to. Clients don’t see this.</p>
+            <h2 id="getting-paid">Getting paid</h2>
+            <p className="small muted">When a client approves a stage, Sealed sends your money to this PayPal account. Clients don’t see it.</p>
           </header>
           <div className="field">
             <label htmlFor="pf-pp">PayPal email</label>

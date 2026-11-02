@@ -160,20 +160,62 @@ export async function authorizeOrder(orderId: string): Promise<AuthorizeResult> 
 }
 
 /** Moves held money to the freelancer. Idempotent per authorization. */
-export async function captureAuthorization(authorizationId: string, amount: number, currency: string): Promise<{ captureId: string; status: string }> {
+export async function captureAuthorization(authorizationId: string, amount: number, currency: string): Promise<{ captureId: string; status: string; net: number | null }> {
   if (paypalMode === "simulation") {
     const a = simAuths.get(authorizationId);
     // Holds made before a server restart aren't in memory; treat them as valid in simulation.
     if (a && a.status === "VOIDED") throw new PayPalError("This hold was cancelled");
     if (a) a.status = "CAPTURED";
-    return { captureId: "SIMCAP-" + id().toUpperCase(), status: "COMPLETED" };
+    return { captureId: "SIMCAP-" + id().toUpperCase(), status: "COMPLETED", net: null };
   }
-  const cap = await call<{ id: string; status: string }>(`/v2/payments/authorizations/${encodeURIComponent(authorizationId)}/capture`, {
+  const cap = await call<{ id: string; status: string; seller_receivable_breakdown?: { net_amount?: { value: string } } }>(`/v2/payments/authorizations/${encodeURIComponent(authorizationId)}/capture`, {
     method: "POST",
     idempotencyKey: `capture-${authorizationId}`,
     body: JSON.stringify({ amount: { value: amount.toFixed(2), currency_code: currency }, final_capture: true }),
   });
-  return { captureId: cap.id, status: cap.status };
+  const net = Number(cap.seller_receivable_breakdown?.net_amount?.value);
+  return { captureId: cap.id, status: cap.status, net: Number.isFinite(net) && net > 0 ? net : null };
+}
+
+/* ----------------------------- Payouts ----------------------------- */
+
+export interface PayoutInput {
+  /** One payout per stage: PayPal refuses a second batch with the same id, so it can't pay twice. */
+  ref: string;
+  email: string;
+  amount: number;
+  currency: string;
+  note: string;
+}
+
+/** Sends the freelancer their money from Sealed's PayPal balance to their own PayPal email. */
+export async function createPayout(input: PayoutInput): Promise<{ batchId: string; status: string }> {
+  if (paypalMode === "simulation") return { batchId: "SIMPAYOUT-" + id().toUpperCase(), status: "SUCCESS" };
+  const res = await call<{ batch_header: { payout_batch_id: string; batch_status: string } }>("/v1/payments/payouts", {
+    method: "POST",
+    body: JSON.stringify({
+      sender_batch_header: { sender_batch_id: input.ref, email_subject: "You've been paid through Sealed", email_message: input.note },
+      items: [{ recipient_type: "EMAIL", receiver: input.email, amount: { value: input.amount.toFixed(2), currency: input.currency }, note: input.note, sender_item_id: input.ref }],
+    }),
+  });
+  return { batchId: res.batch_header.payout_batch_id, status: res.batch_header.batch_status };
+}
+
+/** The status of the (single) item in a payout batch: SUCCESS, PENDING, UNCLAIMED, FAILED, ... */
+export async function getPayoutStatus(batchId: string): Promise<string> {
+  if (paypalMode === "simulation" || batchId.startsWith("SIMPAYOUT-")) return "SUCCESS";
+  const res = await call<{ batch_header: { batch_status: string }; items?: { transaction_status?: string }[] }>(`/v1/payments/payouts/${encodeURIComponent(batchId)}`);
+  return res.items?.[0]?.transaction_status || res.batch_header.batch_status;
+}
+
+/** Turns PayPal's payout errors into something a freelancer can act on. */
+export function payoutError(e: unknown) {
+  const detail = e instanceof PayPalError ? e.detail || "" : "";
+  if (/AUTHORIZATION_ERROR|NOT_AUTHORIZED|PERMISSION/i.test(detail)) return "Payouts isn't switched on for Sealed's PayPal app yet.";
+  if (/INSUFFICIENT_FUNDS/i.test(detail)) return "Sealed's PayPal balance can't cover this payout yet. It will be retried.";
+  if (/DUPLICATE|SENDER_BATCH_ID/i.test(detail)) return "This payout was already sent.";
+  if (/RECEIVER|EMAIL/i.test(detail)) return "PayPal didn't accept that email address.";
+  return (e as Error).message || "PayPal couldn't send the payout.";
 }
 
 /** Cancels a hold. The client's money was never moved, so nothing needs refunding. */

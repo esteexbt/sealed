@@ -1,7 +1,7 @@
 import "server-only";
 import { config, paypalMode } from "./config";
 import { currentFiles, findByOrder, findMilestone, id, isOverdue, log, mutate, read, token } from "./db";
-import { ownerName } from "./auth";
+import { ownerName, ownerOf } from "./auth";
 import * as paypal from "./paypal";
 import { draftReminder } from "./ai";
 import type { Milestone, Project, ScopePlan } from "./types";
@@ -161,6 +161,7 @@ async function release(projectId: string, milestoneId: string, by: "client" | "a
     m.payment.capturedAt = new Date().toISOString();
     m.payment.releasedBy = by;
     m.payment.releaseError = null;
+    m.payment.netAmount = cap.net;
     log(st, {
       projectId,
       milestoneId,
@@ -171,7 +172,78 @@ async function release(projectId: string, milestoneId: string, by: "client" | "a
           : `The review window for ${m.title} ended. ${money(m.amount, project.currency)} released automatically and files unlocked.`,
     });
     return m;
+  }).then(async (m) => {
+    await payOut(projectId, milestoneId);
+    return m;
   });
+}
+
+/**
+ * Sends a released stage's money on to the freelancer's own PayPal email.
+ * Never throws: a missing email or a PayPal problem is recorded on the stage and can be retried.
+ */
+export async function payOut(projectId: string, milestoneId: string) {
+  const s = read();
+  const { project, milestone } = findMilestone(s, projectId, milestoneId);
+  if (!project || !milestone?.payment || milestone.status !== "paid") return;
+  const done = milestone.payment.payout?.status;
+  if (done === "sent" || done === "pending") return;
+  const owner = ownerOf(project);
+  const email = owner?.paypalEmail || null;
+  const amount = Math.round((milestone.payment.netAmount ?? milestone.payment.amount) * 100) / 100;
+  const set = (patch: Partial<NonNullable<typeof milestone.payment.payout>>, logText?: string) =>
+    mutate((st) => {
+      const { milestone: m } = findMilestone(st, projectId, milestoneId);
+      if (!m?.payment) return;
+      m.payment.payout = { status: "pending", email, amount, ...(m.payment.payout || {}), ...patch };
+      if (logText) log(st, { projectId, milestoneId, kind: "payout_sent", text: logText });
+    });
+  if (!email) {
+    await set({ status: "waiting_email", email: null, error: null });
+    return;
+  }
+  try {
+    const r = await paypal.createPayout({
+      ref: `sealed-${milestoneId}-${milestone.payment.captureId}`.slice(0, 127),
+      email,
+      amount,
+      currency: milestone.payment.currency,
+      note: `${project.clientName} approved “${milestone.title}” on Sealed. Here's your payment.`,
+    });
+    await set(
+      { status: r.status === "SUCCESS" ? "sent" : "pending", email, batchId: r.batchId, paypalStatus: r.status, at: new Date().toISOString(), error: null },
+      `${money(amount, milestone.payment.currency)} for ${milestone.title} sent to ${email} with PayPal Payouts.`,
+    );
+  } catch (e) {
+    await set({ status: "failed", email, error: paypal.payoutError(e) });
+  }
+}
+
+/** Retry every payout of this freelancer that is waiting for an email or failed. */
+export async function retryPayouts(ownerId: string) {
+  const due = read().projects
+    .filter((p) => p.ownerId === ownerId)
+    .flatMap((p) => p.milestones.filter((m) => m.status === "paid" && (m.payment?.payout?.status === "waiting_email" || m.payment?.payout?.status === "failed")).map((m) => [p.id, m.id] as const));
+  for (const [pid, mid] of due) await payOut(pid, mid);
+  return due.length;
+}
+
+/** Checks PayPal for payouts still in flight on a project. Cheap, and safe to call on page load. */
+export async function refreshPayouts(projectId: string) {
+  const p = read().projects.find((x) => x.id === projectId);
+  const pending = (p?.milestones || []).filter((m) => m.payment?.payout?.status === "pending" && m.payment.payout.batchId);
+  for (const m of pending) {
+    try {
+      const st = await paypal.getPayoutStatus(m.payment!.payout!.batchId!);
+      const status = st === "SUCCESS" ? "sent" : /FAILED|RETURNED|BLOCKED|REFUNDED|DENIED/.test(st) ? "failed" : "pending";
+      await mutate((s) => {
+        const { milestone } = findMilestone(s, projectId, m.id);
+        if (milestone?.payment?.payout) Object.assign(milestone.payment.payout, { status, paypalStatus: st, error: status === "failed" ? `PayPal marked this payout ${st.toLowerCase()}.` : null });
+      });
+    } catch {
+      /* try again next time */
+    }
+  }
 }
 
 export async function approveMilestone(portalToken: string, milestoneId: string) {

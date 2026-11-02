@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { retryPayouts } from "@/lib/actions";
 import { checkPassword, hashPassword, publicUser, requireUser } from "@/lib/auth";
 import { mutate } from "@/lib/db";
 import { SOCIALS, socialUrl, validHandle } from "@/lib/profile";
@@ -59,6 +60,8 @@ export async function PATCH(req: Request) {
       if (body.newPassword) x.passwordHash = hashPassword(body.newPassword);
       return x;
     });
+    // A new PayPal email sends on any payouts that were waiting for one.
+    if (body.paypalEmail && u.paypalEmail) await retryPayouts(u.id);
     return NextResponse.json({ user: publicUser(u) });
   } catch (e) {
     return bad((e as Error).message);

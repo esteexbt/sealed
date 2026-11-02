@@ -82,6 +82,25 @@ export interface Payment {
   voidedAt?: string | null;
   releaseError?: string | null;
   mode: "sandbox" | "simulation";
+  /** What PayPal left after its fee, which is what the freelancer is sent. */
+  netAmount?: number | null;
+  /** The freelancer's share, sent to their own PayPal after release. */
+  payout?: Payout | null;
+}
+
+/**
+ * The client's money is held and captured in Sealed's PayPal account; on release it is
+ * sent on to the freelancer's PayPal email with PayPal Payouts.
+ */
+export interface Payout {
+  status: "waiting_email" | "pending" | "sent" | "failed";
+  email: string | null;
+  amount: number;
+  batchId?: string | null;
+  /** PayPal's own word for the item: SUCCESS, PENDING, UNCLAIMED, ... */
+  paypalStatus?: string | null;
+  at?: string | null;
+  error?: string | null;
 }
 
 export interface Reminder {
@@ -207,6 +226,7 @@ export interface ActivityEvent {
     | "file_removed"
     | "payment_held"
     | "payment_captured"
+    | "payout_sent"
     | "changes_requested"
     | "revision_sent"
     | "hold_released"

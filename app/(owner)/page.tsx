@@ -25,6 +25,8 @@ export default async function Dashboard() {
   const overdue = overdueRows.reduce((a, r) => a + r.m.amount, 0);
   const paid = projects.flatMap((p) => p.milestones).filter((m) => m.status === "paid").reduce((a, m) => a + m.amount, 0);
   const holding = projects.reduce((a, p) => a + held(p), 0);
+  // Only projects that have actually paid something count toward "banked".
+  const paidProjects = projects.filter((p) => p.milestones.some((m) => m.status === "paid")).length;
 
   if (!projects.length) {
     return (
@@ -40,6 +42,15 @@ export default async function Dashboard() {
 
   return (
     <div className="dash">
+      {!user.paypalEmail && (
+        <Link href="/profile#getting-paid" className="pay-nudge">
+          <span className="pay-nudge-ic" aria-hidden>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="6" width="18" height="13" rx="2.5" /><path d="M3 10.5h18M7 15h3" /></svg>
+          </span>
+          <span><strong>Add your PayPal email</strong> so approved payments are sent straight to you.</span>
+          <span className="pay-nudge-go">Add it</span>
+        </Link>
+      )}
       <section className="dash-hero">
         <h1>
           {owed > 0 ? <>You’re owed {money(owed, currency)}.</> : <>Everyone has paid.</>}
@@ -57,7 +68,7 @@ export default async function Dashboard() {
               <span className="win-ic" aria-hidden>
                 <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4.5 10.5l3.6 3.5 7.4-8" /></svg>
               </span>
-              <span><strong>{money(paid, currency)}</strong> banked so far, from {projects.length} project{projects.length === 1 ? "" : "s"}</span>
+              <span><strong>{money(paid, currency)}</strong> banked so far, from {paidProjects} project{paidProjects === 1 ? "" : "s"}</span>
             </span>
           )}
           {holding > 0 && (

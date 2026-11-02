@@ -2,7 +2,8 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { pageUser } from "@/lib/auth";
 import { currentFiles, getProject, held, isOverdue, projectSlug } from "@/lib/db";
-import { money, portalUrl, settleDue } from "@/lib/actions";
+import { money, portalUrl, refreshPayouts, settleDue } from "@/lib/actions";
+import { PayoutLine } from "@/components/PayoutLine";
 import { isStale, refreshInBackground } from "@/lib/check";
 import { statusLabel, when } from "@/lib/format";
 import { ensurePreviews } from "@/lib/files";
@@ -28,6 +29,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
   const slug = projectSlug(found);
   if (decodeURIComponent(id) !== slug) redirect(`/projects/${slug}`);
   await ensurePreviews(found.id);
+  await refreshPayouts(found.id);
   const p = getProject(found.id, user.id)!;
   const holding = held(p);
   const total = p.milestones.reduce((a, m) => a + m.amount, 0);
@@ -201,6 +203,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
                         <span className="tiny" style={{ color: "var(--warn)" }}>PayPal is still clearing this payment. It reaches your balance once cleared.</span>
                       )}
                     </div>
+                    {m.payment.payout && <PayoutLine payout={m.payment.payout} currency={m.payment.currency} />}
                   </div>
                 )}
                 {m.reminders.length > 0 && m.status === "awaiting_payment" && (
