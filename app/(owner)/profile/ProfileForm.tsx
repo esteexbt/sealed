@@ -61,6 +61,8 @@ export function ProfileForm({
   const [bio, setBio] = useState(initial.bio);
   const [handle, setHandle] = useState(initial.handle);
   const [paypalEmail, setPaypalEmail] = useState(initial.paypalEmail || "");
+  // Once saved, the PayPal email is locked behind an Edit button: it's where money goes.
+  const [editingPP, setEditingPP] = useState(!initial.paypalEmail);
   const [links, setLinks] = useState<Partial<Record<SocialKind, string>>>(initial.socials);
   const [busy, setBusy] = useState<"" | "save" | "avatar" | "banner" | "logout">("");
   const [error, setError] = useState("");
@@ -86,6 +88,7 @@ export function ProfileForm({
     setBusy("");
     if (!res.ok) return setError(json.error || "That didn’t save.");
     setUser(json.user);
+    if (json.user.paypalEmail) setEditingPP(false);
     dialog.notify("Profile saved.");
   }
 
@@ -229,7 +232,27 @@ export function ProfileForm({
           </header>
           <div className="field">
             <label htmlFor="pf-pp">PayPal email</label>
-            <input id="pf-pp" className="input" type="email" value={paypalEmail} onChange={(e) => setPaypalEmail(e.target.value)} placeholder="you@paypal.com" />
+            {editingPP ? (
+              <div className="pp-edit">
+                <input id="pf-pp" className="input" type="email" value={paypalEmail} onChange={(e) => setPaypalEmail(e.target.value)} placeholder="you@paypal.com" autoFocus={Boolean(user.paypalEmail)} />
+                {user.paypalEmail && (
+                  <button type="button" className="btn btn-quiet" onClick={() => { setPaypalEmail(user.paypalEmail || ""); setEditingPP(false); }}>
+                    Cancel
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="pp-locked">
+                <span className="pp-locked-ic" aria-hidden>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><rect x="5" y="11" width="14" height="9" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg>
+                </span>
+                <span className="pp-locked-email" id="pf-pp">{user.paypalEmail}</span>
+                <button type="button" className="pp-edit-btn" onClick={() => setEditingPP(true)} aria-label="Edit PayPal email">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M4 20h4L19 9l-4-4L4 16v4Z" /><path d="M13.5 6.5l4 4" /></svg>
+                  Edit
+                </button>
+              </div>
+            )}
           </div>
         </section>
 
