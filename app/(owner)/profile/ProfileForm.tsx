@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useDialog } from "@/components/Dialog";
 import { ShareProfile } from "@/components/ShareProfile";
 import { SocialIcon, Stars } from "@/components/SocialIcon";
@@ -46,6 +46,14 @@ export function ProfileForm({
   socials: { kind: SocialKind; label: string; placeholder: string }[];
 }) {
   const router = useRouter();
+  const bioEl = useRef<HTMLTextAreaElement>(null);
+  // Bio starts small and grows with what's written.
+  useEffect(() => {
+    const t = bioEl.current;
+    if (!t) return;
+    t.style.height = "auto";
+    t.style.height = `${Math.min(t.scrollHeight + 2, 360)}px`;
+  });
   const dialog = useDialog();
   const [user, setUser] = useState(initial);
   const [name, setName] = useState(initial.name);
@@ -182,7 +190,7 @@ export function ProfileForm({
           </div>
           <div className="field">
             <label htmlFor="pf-bio">Bio</label>
-            <textarea id="pf-bio" className="textarea" rows={4} value={bio} onChange={(e) => setBio(e.target.value)} maxLength={600} placeholder="What you do, who you do it for, and what working with you is like." />
+            <textarea id="pf-bio" ref={bioEl} className="textarea grow-area" rows={2} value={bio} onChange={(e) => setBio(e.target.value)} maxLength={600} placeholder="What you do, who you do it for, and what working with you is like." />
             <span className="tiny muted acc-count">{bio.length} / 600</span>
           </div>
         </section>

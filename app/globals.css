@@ -1093,3 +1093,5 @@ p { margin: 0; }
 
 /* Brief box starts compact and grows with its content */
 .brief-box .textarea.brief-grow, .new-solo .brief-box .textarea.brief-grow { min-height: 110px; max-height: 520px; resize: none; overflow-y: auto; }
+
+.textarea.grow-area { min-height: 76px; max-height: 360px; resize: none; overflow-y: auto; }
