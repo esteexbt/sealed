@@ -71,7 +71,6 @@ export function ChangeRequestDialog({
             id="cr-note"
             ref={area}
             className="textarea"
-            style={{ minHeight: 140 }}
             value={note}
             maxLength={2000}
             onChange={(e) => setNote(e.target.value)}

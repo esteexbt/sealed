@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "@fontsource/young-serif/400.css";
 import "@fontsource-variable/public-sans";
 import "./globals.css";
+import { AutoGrow } from "@/components/AutoGrow";
 
 const url = process.env.APP_URL || "http://localhost:3000";
 
@@ -25,7 +26,10 @@ export const viewport = { themeColor: "#12172e" };
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        {children}
+        <AutoGrow />
+      </body>
     </html>
   );
 }

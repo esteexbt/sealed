@@ -130,7 +130,7 @@ p { margin: 0; }
   font: inherit; color: var(--ink); background: var(--sheet);
   border: 1px solid var(--rule-strong); border-radius: var(--r-s); padding: 10px 12px; width: 100%;
 }
-.textarea { resize: vertical; min-height: 180px; line-height: 1.55; }
+.textarea { resize: none; min-height: 84px; max-height: 360px; overflow-y: auto; line-height: 1.55; field-sizing: content; }
 .input:focus, .textarea:focus { outline: none; border-color: var(--seal); box-shadow: 0 0 0 3px var(--seal-soft); }
 .input-danger:focus { border-color: var(--danger); box-shadow: 0 0 0 3px var(--danger-soft); }
 .input-money { font-variant-numeric: tabular-nums; text-align: right; }
