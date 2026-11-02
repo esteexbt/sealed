@@ -22,6 +22,9 @@ export async function POST(req: Request) {
         const p = s.projects.find((x) => x.portalToken === token);
         if (!p) throw new Error("Not found");
         if (!p.milestones.some((m) => m.status === "paid" && m.payment?.captureId)) throw new Error("You can rate once you’ve approved and paid for a stage.");
+        // New ratings only once every stage is paid; an existing rating can still be edited.
+        const open = p.milestones.filter((m) => m.status !== "cancelled" && m.status !== "refunded");
+        if (!p.review && open.some((m) => m.status !== "paid")) throw new Error("You can rate once the whole project is done and every stage is paid.");
         const now = new Date().toISOString();
         p.review = p.review ? { ...p.review, rating: r, comment, updatedAt: now } : { rating: r, comment, at: now };
       });

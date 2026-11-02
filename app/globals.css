@@ -1231,3 +1231,7 @@ p { margin: 0; }
 .pay-nudge-ic { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; background: var(--held); color: var(--night); flex: none; }
 .pay-nudge-go { margin-left: auto; font-weight: 700; color: var(--seal); white-space: nowrap; }
 @media (max-width: 560px) { .pay-nudge-go { display: none; } }
+
+.rate-locked .rate-stars-off .rate-star { color: var(--rule-strong); cursor: default; }
+.rate-locked .rate-stars-off svg path { fill: var(--rule); }
+.rate-locked .rate-actions { justify-content: space-between; align-items: center; }

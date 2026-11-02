@@ -97,6 +97,10 @@ export default async function PortalPage({ params }: { params: Promise<{ token: 
       freelancerHandle={ownerOf(p)?.handle || null}
       review={p.review ? { rating: p.review.rating, comment: p.review.comment } : null}
       canReview={p.milestones.some((m) => m.status === "paid" && Boolean(m.payment?.captureId))}
+      reviewProgress={{
+        paid: p.milestones.filter((m) => m.status === "paid").length,
+        total: p.milestones.filter((m) => m.status !== "cancelled" && m.status !== "refunded").length,
+      }}
       currency={p.currency}
       milestones={milestones}
       mode={paypalMode}

@@ -65,6 +65,8 @@ interface Props {
   freelancerCard: { avatar: string | null; headline: string; rating: number | null; reviews: number };
   review: { rating: number; comment: string } | null;
   canReview: boolean;
+  /** Rating opens only once every stage is paid. */
+  reviewProgress: { paid: number; total: number };
   title: string;
   clientName: string;
   freelancer: string;
@@ -146,7 +148,15 @@ export function Portal(props: Props) {
         ))}
       </ol>
 
-      {props.canReview && <RateCard token={props.token} freelancer={props.freelancer} handle={props.freelancerHandle} initial={props.review} />}
+      {props.canReview && (
+        <RateCard
+          token={props.token}
+          freelancer={props.freelancer}
+          handle={props.freelancerHandle}
+          initial={props.review}
+          progress={props.reviewProgress}
+        />
+      )}
 
       <footer className="portal-foot tiny muted">
         <span className="portal-by">Protected by <Logo height={16} label="Sealed" /></span>
@@ -509,7 +519,20 @@ function PayButton({
 }
 
 /** After paying for work, the client can rate the freelancer once for this project (and change it later). */
-function RateCard({ token, freelancer, handle, initial }: { token: string; freelancer: string; handle: string | null; initial: { rating: number; comment: string } | null }) {
+function RateCard({
+  token,
+  freelancer,
+  handle,
+  initial,
+  progress,
+}: {
+  token: string;
+  freelancer: string;
+  handle: string | null;
+  initial: { rating: number; comment: string } | null;
+  progress: { paid: number; total: number };
+}) {
+  const complete = progress.total > 0 && progress.paid >= progress.total;
   const [rating, setRating] = useState(initial?.rating || 0);
   const [hover, setHover] = useState(0);
   const [comment, setComment] = useState(initial?.comment || "");
@@ -519,6 +542,29 @@ function RateCard({ token, freelancer, handle, initial }: { token: string; freel
   const [error, setError] = useState("");
   const first = freelancer.split(/\s+/)[0];
   const words = ["", "Poor", "Fair", "Good", "Great", "Excellent"];
+
+  // Rating opens when the whole project is paid, so it reflects all of the work.
+  if (!complete && !initial) {
+    return (
+      <section className="rate rate-locked" aria-label="Rate the freelancer">
+        <div>
+          <h2>How was working with {first}?</h2>
+          <p className="small muted">You can rate {first} once the whole project is done and every stage is paid. Your rating shows on their profile as verified.</p>
+        </div>
+        <div className="rate-stars rate-stars-off" aria-hidden>
+          {[1, 2, 3, 4, 5].map((n) => (
+            <span key={n} className="rate-star">
+              <svg width="30" height="30" viewBox="0 0 24 24"><path d="M12 3.2l2.7 5.6 6.1.8-4.5 4.3 1.1 6.1L12 17l-5.4 3 1.1-6.1-4.5-4.3 6.1-.8L12 3.2Z" /></svg>
+            </span>
+          ))}
+        </div>
+        <div className="rate-actions">
+          <span className="small muted">{progress.paid} of {progress.total} stages paid</span>
+          <button type="button" className="btn btn-ghost" disabled>Waiting for the project to finish</button>
+        </div>
+      </section>
+    );
+  }
 
   if (saved && !editing) {
     return (
