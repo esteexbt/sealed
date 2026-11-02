@@ -187,6 +187,7 @@ function MilestoneBlock({
   emphasis,
   onView,
   plan,
+  milestones,
 }: Props & { m: PortalMilestone; index: number; fmt: (n: number) => string; emphasis: boolean; onView: (f: PortalFile) => void }) {
   const router = useRouter();
   const [opening, setOpening] = useState(false); // approve animation in flight
@@ -230,8 +231,8 @@ function MilestoneBlock({
   return (
     <li className={`pm pm-${m.status}${showBroken ? " pm-paid" : ""}`}>
       <div className="pm-head">
-        <span className="pm-n" aria-hidden>{index + 1}</span>
         <div>
+          <span className="stage-label">Stage {index + 1} of {milestones.length}</span>
           <h2>{m.title}</h2>
           <p className="small muted">{m.description || m.deliverables.join(", ")}</p>
         </div>

@@ -1276,3 +1276,13 @@ p { margin: 0; }
 
 .pr-paid .payout { display: block; line-height: 1.45; }
 .pr-paid .payout b { margin-right: 4px; }
+
+/* ------------------------------ stages without the number column ------------------------------ */
+.stage-label { display: block; font-size: 0.72rem; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--seal); margin-bottom: 4px; }
+.ms-paid .stage-label, .pm-paid .stage-label { color: var(--paid); }
+.ms-top { grid-template-columns: minmax(0, 1fr) auto; }
+.ms-empty, .ms-actions, .ms-check, .ms-views, .pm-wait { padding-left: 0; }
+.ms-note, .ms-danger { margin-left: 0; }
+.pm-head { grid-template-columns: minmax(0, 1fr) auto; }
+@media (max-width: 560px) { .ms-top { grid-template-columns: 1fr; } .ms-side { grid-column: 1; } }
+.files { padding-left: 0; }

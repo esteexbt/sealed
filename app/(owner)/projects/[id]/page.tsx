@@ -100,8 +100,8 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
           return (
             <li key={m.id} className={`ms sheet ms-${m.status}`}>
               <div className="ms-top">
-                <span className="ms-n" aria-hidden>{i + 1}</span>
                 <div className="ms-title">
+                  <span className="stage-label">Stage {i + 1} of {p.milestones.length}</span>
                   <h2>{m.title}</h2>
                   <p className="small muted">{m.deliverables.join(", ")}</p>
                 </div>
