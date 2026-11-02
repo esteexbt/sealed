@@ -1,13 +1,14 @@
 import { NextResponse } from "next/server";
 import { approveMilestone, clientCancel, requestChanges } from "@/lib/actions";
 import { mutate } from "@/lib/db";
+import { agreePlan, requestPlanChanges } from "@/lib/plan";
 
 /** Client actions from the portal. The portal token is the client's credential. */
 export async function POST(req: Request) {
   const { token, milestoneId, action, note, rating } = (await req.json()) as {
     token?: string;
     milestoneId?: string;
-    action?: "approve" | "changes" | "cancel" | "seen" | "review";
+    action?: "approve" | "changes" | "cancel" | "seen" | "review" | "plan_agree" | "plan_changes";
     note?: string;
     rating?: number;
   };
@@ -24,6 +25,16 @@ export async function POST(req: Request) {
         const now = new Date().toISOString();
         p.review = p.review ? { ...p.review, rating: r, comment, updatedAt: now } : { rating: r, comment, at: now };
       });
+      return NextResponse.json({ ok: true });
+    } catch (e) {
+      return NextResponse.json({ error: (e as Error).message }, { status: 400 });
+    }
+  }
+  if (action === "plan_agree" || action === "plan_changes") {
+    if (!token) return NextResponse.json({ error: "Missing project" }, { status: 400 });
+    try {
+      if (action === "plan_agree") await agreePlan(token);
+      else await requestPlanChanges(token, note || "");
       return NextResponse.json({ ok: true });
     } catch (e) {
       return NextResponse.json({ error: (e as Error).message }, { status: 400 });

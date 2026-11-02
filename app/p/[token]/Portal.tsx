@@ -47,7 +47,19 @@ export interface PortalMilestone {
   unreadIds: string[];
 }
 
+export interface PortalPlan {
+  status: "pending" | "changes" | "agreed";
+  agreed: boolean;
+  version: number;
+  agreedAt: string | null;
+  request: { at: string; note: string } | null;
+  /** Per stage id: new since the last approval, or what it was before. */
+  changes: Record<string, { isNew: boolean; was: { title: string; deliverables: string[]; amount: number; dueDate: string } | null }>;
+  removed: { title: string; amount: number }[];
+}
+
 interface Props {
+  plan: PortalPlan;
   token: string;
   freelancerHandle: string | null;
   freelancerCard: { avatar: string | null; headline: string; rating: number | null; reviews: number };
@@ -126,6 +138,8 @@ export function Portal(props: Props) {
         </div>
       </header>
 
+      {!props.plan.agreed && <PlanReview {...props} fmt={fmt} />}
+
       <ol className="portal-ms">
         {milestones.map((m, i) => (
           <MilestoneBlock key={m.id} index={i} m={m} fmt={fmt} {...props} emphasis={nextPay?.id === m.id} onView={setViewing} />
@@ -162,6 +176,7 @@ function MilestoneBlock({
   freelancer,
   emphasis,
   onView,
+  plan,
 }: Props & { m: PortalMilestone; index: number; fmt: (n: number) => string; emphasis: boolean; onView: (f: PortalFile) => void }) {
   const router = useRouter();
   const [opening, setOpening] = useState(false); // approve animation in flight
@@ -310,7 +325,13 @@ function MilestoneBlock({
           </span>
         </div>
 
-        {m.status === "awaiting_payment" && m.files.length > 0 && (
+        {m.status === "awaiting_payment" && m.files.length > 0 && !plan.agreed && (
+          <div className="pm-paywrap">
+            <button type="button" className="btn btn-ghost" disabled>Approve the plan to pay</button>
+            <p className="tiny muted pm-paynote">Payments open once you’ve approved the plan above.</p>
+          </div>
+        )}
+        {m.status === "awaiting_payment" && m.files.length > 0 && plan.agreed && (
           <div className="pm-paywrap">
             <PayButton token={token} milestoneId={m.id} mode={mode} clientId={clientId} currency={currency} label={`Pay ${fmt(m.amount)} into hold`} emphasis={emphasis} onPaid={() => router.refresh()} />
             <p className="tiny muted pm-paynote">Held by PayPal until you approve. You review the full work first.</p>
@@ -549,7 +570,7 @@ function RateCard({ token, freelancer, handle, initial }: { token: string; freel
         ))}
         <span className="rate-word small">{words[hover || rating]}</span>
       </div>
-      <textarea className="textarea" rows={3} maxLength={500} value={comment} onChange={(e) => setComment(e.target.value)} placeholder={`What was it like working with ${first}? (optional)`} />
+      <textarea className="textarea grow-area" rows={2} maxLength={500} value={comment} onChange={(e) => setComment(e.target.value)} placeholder={`What was it like working with ${first}? (optional)`} />
       {error && <p className="error small" role="alert">{error}</p>}
       <div className="rate-actions">
         {initial && <button type="button" className="btn btn-quiet" onClick={() => { setEditing(false); setRating(initial.rating); setComment(initial.comment); }}>Cancel</button>}
@@ -590,5 +611,113 @@ function FreelancerChip({ name, handle, avatar, headline, rating, reviews }: { n
     </a>
   ) : (
     <div className="fc">{body}</div>
+  );
+}
+
+/**
+ * Before anything is paid, the client approves the plan: every stage, its price, date and deliverables.
+ * When the freelancer changes an approved plan, what changed is marked so nothing slips through.
+ */
+function PlanReview({ plan, milestones, token, freelancer, fmt }: Props & { fmt: (n: number) => string }) {
+  const router = useRouter();
+  const [busy, setBusy] = useState<"" | "agree" | "changes">("");
+  const [asking, setAsking] = useState(false);
+  const [note, setNote] = useState("");
+  const [error, setError] = useState("");
+  const live = milestones.filter((m) => m.status !== "cancelled");
+  const total = live.reduce((a, m) => a + m.amount, 0);
+  const updated = plan.version > 1 || Object.keys(plan.changes).length > 0 || plan.removed.length > 0;
+  const shortDay = (d: string) => new Date(d + "T12:00:00Z").toLocaleDateString("en-US", { month: "short", day: "numeric" });
+
+  async function send(action: "plan_agree" | "plan_changes") {
+    setBusy(action === "plan_agree" ? "agree" : "changes");
+    setError("");
+    const res = await fetch("/api/portal", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token, action, note }) });
+    const json = await res.json().catch(() => ({}));
+    setBusy("");
+    if (!res.ok) return setError(json.error || "That didn’t go through. Try again.");
+    setAsking(false);
+    setNote("");
+    router.refresh();
+  }
+
+  return (
+    <section className="pr sheet" aria-labelledby="pr-h">
+      <div className="pr-head">
+        <span className="pr-badge">{plan.status === "changes" ? "Changes requested" : updated ? "Plan updated" : "Step 1"}</span>
+        <h2 id="pr-h">{plan.status === "changes" ? "You asked for changes" : updated ? `${freelancer} changed the plan` : "Review and approve the plan"}</h2>
+        <p className="muted small">
+          {plan.status === "changes"
+            ? `${freelancer} is updating the plan. You can still approve it as it is.`
+            : updated
+              ? "Check what changed below. Nothing new can be paid until you approve it."
+              : `These are the stages ${freelancer} proposes. You only pay for each one when its work is delivered, into a PayPal hold.`}
+        </p>
+        {plan.status === "changes" && plan.request && <p className="pr-req">“{plan.request.note}”</p>}
+      </div>
+
+      <ol className="pr-list">
+        {live.map((m, i) => {
+          const ch = plan.changes[m.id];
+          const was = ch?.was;
+          return (
+            <li key={m.id} className={`pr-row${ch ? " pr-changed" : ""}`}>
+              <span className="pr-n">{i + 1}</span>
+              <div className="pr-main">
+                <strong>
+                  {m.title}
+                  {ch?.isNew && <em className="pr-tag">New</em>}
+                  {was && <em className="pr-tag">Changed</em>}
+                </strong>
+                <span className="pr-deliv">{m.deliverables.join(" · ")}</span>
+                {was && was.deliverables.join("|") !== m.deliverables.join("|") && <span className="pr-was">Was: {was.deliverables.join(" · ")}</span>}
+              </div>
+              <div className="pr-terms">
+                <span className="pr-amt">
+                  {was && was.amount !== m.amount && <s>{fmt(was.amount)}</s>}
+                  {fmt(m.amount)}
+                </span>
+                <span className="pr-due">
+                  {was && was.dueDate !== m.dueDate && <s>{shortDay(was.dueDate)}</s>}
+                  Due {shortDay(m.dueDate)}
+                </span>
+              </div>
+            </li>
+          );
+        })}
+        {plan.removed.map((r) => (
+          <li key={r.title} className="pr-row pr-removed">
+            <span className="pr-n">–</span>
+            <div className="pr-main"><strong><s>{r.title}</s><em className="pr-tag">Removed</em></strong></div>
+            <div className="pr-terms"><span className="pr-amt"><s>{fmt(r.amount)}</s></span></div>
+          </li>
+        ))}
+      </ol>
+
+      <div className="pr-foot">
+        <p className="pr-total"><span className="muted">Total</span> <strong>{fmt(total)}</strong> <span className="muted">in {live.length} payment{live.length === 1 ? "" : "s"}</span></p>
+        {!asking && (
+          <div className="pr-actions">
+            {plan.status !== "changes" && (
+              <button type="button" className="btn btn-ghost" onClick={() => setAsking(true)} disabled={busy !== ""}>Ask for changes</button>
+            )}
+            <button type="button" className="btn btn-seal" onClick={() => send("plan_agree")} disabled={busy !== ""}>
+              {busy === "agree" ? "Approving…" : plan.status === "changes" ? "Approve as it is" : "Approve the plan"}
+            </button>
+          </div>
+        )}
+      </div>
+      {asking && (
+        <form className="pr-ask" onSubmit={(e) => { e.preventDefault(); if (note.trim().length >= 5) send("plan_changes"); }}>
+          <label htmlFor="pr-note" className="small"><strong>What would you like changed?</strong></label>
+          <textarea id="pr-note" className="textarea grow-area" rows={2} autoFocus value={note} maxLength={1500} onChange={(e) => setNote(e.target.value)} placeholder="e.g. Can stage 2 be $350? And please add a business card design." />
+          <div className="pr-actions">
+            <button type="button" className="btn btn-quiet" onClick={() => setAsking(false)} disabled={busy !== ""}>Cancel</button>
+            <button className="btn btn-ink" disabled={busy !== "" || note.trim().length < 5}>{busy === "changes" ? "Sending…" : `Send to ${freelancer.split(" ")[0]}`}</button>
+          </div>
+        </form>
+      )}
+      {error && <p className="error small" role="alert">{error}</p>}
+    </section>
   );
 }

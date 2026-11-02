@@ -349,7 +349,7 @@ export function LedgerGrid({ rows }: { rows: LedgerRow[] }) {
           paginationPageSizeSelector={false}
         />
       </div>
-      <p className="tiny muted">Click a dotted cell to edit an unpaid price, title or due date. Double-click a row to open its project.</p>
+      <p className="tiny muted">Click a dotted cell to edit an unpaid price, title or due date. Changes go to the client to approve before they pay. Double-click a row to open its project.</p>
     </div>
   );
 }

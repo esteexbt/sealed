@@ -11,6 +11,8 @@ import { ProjectDial } from "@/components/ProjectDial";
 import { notices, unread } from "@/lib/notify";
 import { LiveRefresh, MilestoneBell, OpenNotices } from "@/components/MilestoneBell";
 import { OwnerFiles } from "@/components/OwnerFiles";
+import { PlanBar } from "@/components/PlanBar";
+import { isOpenStage } from "@/lib/plan";
 import { CopyLink, MilestoneAction, RemindButton, UploadFiles } from "@/components/ProjectControls";
 
 const date = (d: string) => new Date(d + (d.length === 10 ? "T12:00:00Z" : "")).toLocaleDateString("en-US", { month: "short", day: "numeric" });
@@ -57,6 +59,28 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
           </div>
         </div>
       </header>
+
+      <PlanBar
+        projectId={p.id}
+        client={p.clientName}
+        currency={p.currency}
+        status={p.agreement?.status || "agreed"}
+        version={p.agreement?.version || 1}
+        agreedAt={p.agreement?.agreedAt || null}
+        request={p.agreement?.request || null}
+        stages={p.milestones
+          .filter((m) => m.status !== "cancelled")
+          .map((m) => ({
+            id: m.id,
+            title: m.title,
+            description: m.description,
+            deliverables: m.deliverables,
+            amount: m.amount,
+            dueDate: m.dueDate,
+            locked: !isOpenStage(m),
+            lockedReason: m.status === "paid" ? "Paid" : m.status === "refunded" ? "Refunded" : m.status === "changes_requested" ? "Revising" : "In review",
+          }))}
+      />
 
       <ol className="ms-list">
         {p.milestones.map((m, i) => {

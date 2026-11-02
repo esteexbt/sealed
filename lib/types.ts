@@ -150,6 +150,33 @@ export interface Review {
   updatedAt?: string;
 }
 
+/** The terms of one stage, as the client agreed them. */
+export interface StageTerms {
+  title: string;
+  deliverables: string[];
+  amount: number;
+  dueDate: string;
+}
+
+/**
+ * The client's sign-off on the plan. Nothing can be paid until it is "agreed".
+ * Any change to an unpaid stage's terms puts it back to "pending" for the client to approve.
+ * Projects made before this existed have no agreement and count as agreed.
+ */
+export interface Agreement {
+  status: "pending" | "changes" | "agreed";
+  /** Bumped each time agreed terms are changed and sent back to the client. */
+  version: number;
+  sentAt: string;
+  agreedAt?: string | null;
+  /** Last agreed terms per stage id, so the client can see exactly what changed. */
+  agreed?: Record<string, StageTerms> | null;
+  /** The client's latest request for changes to the plan. */
+  request?: { at: string; note: string } | null;
+  /** The terms the client was looking at when they asked for changes, to show what was updated. */
+  asked?: Record<string, StageTerms> | null;
+}
+
 export interface Project {
   id: string;
   /** The freelancer who owns this project. */
@@ -166,6 +193,7 @@ export interface Project {
   milestones: Milestone[];
   createdAt: string;
   review?: Review | null;
+  agreement?: Agreement;
 }
 
 export interface ActivityEvent {
@@ -186,7 +214,10 @@ export interface ActivityEvent {
     | "reminder_sent"
     | "refunded"
     | "agent_action"
-    | "edited";
+    | "edited"
+    | "plan_sent"
+    | "plan_agreed"
+    | "plan_changes";
   text: string;
 }
 

@@ -79,6 +79,7 @@ const pay = (amount, h) => ({ orderId: "SIM-" + rid().toUpperCase(), captureId: 
 
 const bean = {
   id: rid(), portalToken: tok(), title: "Brand identity for Bean There Coffee", clientName: "Bean There Coffee", clientEmail: "tolu@beanthere.ng", currency: "USD",
+  agreement: { status: "pending", version: 1, sentAt: new Date().toISOString(), agreedAt: null, agreed: null, request: null },
   brief: "hey!! saw your work on behance, love it. I'm opening a coffee shop in Yaba called Bean There and I need a logo + full brand kit (colours, fonts, menu template, IG templates). we launch in 3 weeks so kinda urgent lol. budget is tight, around $1,200. my email is tolu@beanthere.ng",
   summary: "A logo and launch-ready brand kit in three paid stages over three weeks, inside the $1,200 budget.",
   questions: ["Do you already have a shop sign or menu printer booked? Their specs affect the logo files.", "How many revision rounds do you expect on the logo?"],

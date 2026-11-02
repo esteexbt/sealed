@@ -5,6 +5,7 @@ import { ownerName } from "./auth";
 import * as paypal from "./paypal";
 import { draftReminder } from "./ai";
 import type { Milestone, Project, ScopePlan } from "./types";
+import { ensureBaseline, isAgreed, markPlanChanged } from "./plan";
 
 export const money = (n: number, currency = "USD") =>
   new Intl.NumberFormat("en-US", { style: "currency", currency, maximumFractionDigits: n % 1 ? 2 : 0 }).format(n);
@@ -30,6 +31,8 @@ export async function createProject(plan: ScopePlan, brief: string, ownerId: str
     summary: plan.summary,
     questions: plan.questions,
     createdAt: new Date().toISOString(),
+    // The client approves the plan before anything can be paid.
+    agreement: { status: "pending", version: 1, sentAt: new Date().toISOString(), agreedAt: null, agreed: null, request: null },
     milestones: plan.milestones.map(
       (m): Milestone => ({
         id: id(),
@@ -68,6 +71,7 @@ function byToken(portalToken: string, milestoneId: string) {
 export async function startCheckout(portalToken: string, milestoneId: string) {
   const { project, milestone } = byToken(portalToken, milestoneId);
   if (milestone.status !== "awaiting_payment") throw new Error("This milestone isn't waiting for payment");
+  if (!isAgreed(project)) throw new Error("Approve the plan first. Payments open once you've agreed the stages and prices.");
   if (!currentFiles(milestone).length) throw new Error("There's nothing to review yet. You'll pay once the work is delivered.");
   const order = await paypal.createOrder({
     projectId: project.id,
@@ -95,6 +99,7 @@ export async function completeCheckout(portalToken: string, orderId: string) {
   const { project, milestone } = findByOrder(before, orderId);
   if (!project || !milestone || project.portalToken !== portalToken) throw new Error("Order does not belong to this project");
   if (milestone.status !== "awaiting_payment") return { ok: true as const, milestoneId: milestone.id, already: true };
+  if (!isAgreed(project)) throw new Error("The plan changed and needs your approval first. Refresh the page.");
   if (Math.abs((milestone.payment?.amount ?? milestone.amount) - milestone.amount) > 0.001) {
     throw new Error("The price changed after checkout started. Refresh the page and pay again.");
   }
@@ -356,8 +361,9 @@ export async function updateMilestone(projectId: string, milestoneId: string, pa
     const changes = Object.entries(clean)
       .filter(([k, v]) => (milestone as unknown as Record<string, unknown>)[k] !== v)
       .map(([k, v]) => (k === "amount" ? `price to ${money(v as number, project.currency)}` : k === "dueDate" ? `due date to ${v}` : `title to "${v}"`));
+    ensureBaseline(project);
     Object.assign(milestone, clean);
-    if (changes.length) log(s, { projectId, milestoneId, kind: "edited", text: `Changed ${milestone.title} ${changes.join(", ")}` });
+    if (changes.length) markPlanChanged(s, project, `Changed ${milestone.title} ${changes.join(", ")}`);
     return milestone;
   });
 }

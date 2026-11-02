@@ -10,6 +10,7 @@ import { clientNotices, unread } from "@/lib/notify";
 import { money } from "@/lib/actions";
 import { ownerName, ownerOf } from "@/lib/auth";
 import { profileStats } from "@/lib/profile";
+import { isAgreed, planDiff } from "@/lib/plan";
 
 export const dynamic = "force-dynamic";
 
@@ -74,8 +75,20 @@ export default async function PortalPage({ params }: { params: Promise<{ token: 
     reviews: ownerStats?.reviews.length ?? 0,
   };
 
+  const diff = planDiff(p);
+  const plan = {
+    status: p.agreement?.status || ("agreed" as const),
+    agreed: isAgreed(p),
+    version: p.agreement?.version || 1,
+    agreedAt: p.agreement?.agreedAt || null,
+    request: p.agreement?.request || null,
+    changes: Object.fromEntries(diff.stages.filter((d) => d.isNew || d.was).map((d) => [d.id, { isNew: d.isNew, was: d.was }])),
+    removed: diff.removed.map((t) => ({ title: t.title, amount: t.amount })),
+  };
+
   return (
     <Portal
+      plan={plan}
       freelancerCard={freelancerCard}
       token={token}
       title={p.title}
