@@ -25,8 +25,6 @@ export default async function Dashboard() {
   const overdue = overdueRows.reduce((a, r) => a + r.m.amount, 0);
   const paid = projects.flatMap((p) => p.milestones).filter((m) => m.status === "paid").reduce((a, m) => a + m.amount, 0);
   const holding = projects.reduce((a, p) => a + held(p), 0);
-  // Only projects that have actually paid something count toward "banked".
-  const paidProjects = projects.filter((p) => p.milestones.some((m) => m.status === "paid")).length;
 
   if (!projects.length) {
     return (
@@ -80,7 +78,7 @@ export default async function Dashboard() {
               <span className="win-ic" aria-hidden>
                 <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4.5 10.5l3.6 3.5 7.4-8" /></svg>
               </span>
-              <span><strong>{money(paid, currency)}</strong> banked so far, from {paidProjects} project{paidProjects === 1 ? "" : "s"}</span>
+              <span><strong>{money(paid, currency)}</strong> banked so far across {projects.length} project{projects.length === 1 ? "" : "s"}</span>
             </span>
           )}
           {holding > 0 && (
