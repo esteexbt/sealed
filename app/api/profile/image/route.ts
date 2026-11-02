@@ -3,7 +3,8 @@ import path from "node:path";
 import sharp from "sharp";
 import { NextResponse } from "next/server";
 import { publicUser, requireUser } from "@/lib/auth";
-import { FILES_DIR, id, mutate } from "@/lib/db";
+import { FILES_DIR, id, mutate, savedFile } from "@/lib/db";
+import { removeBackup } from "@/lib/backup";
 
 const SIZES = { avatar: { width: 512, height: 512 }, banner: { width: 1500, height: 500 } } as const;
 const MAX = 8 * 1024 * 1024;
@@ -32,6 +33,7 @@ export async function POST(req: Request) {
   const key = `${kind}-${user.id}-${id()}.jpg`;
   fs.mkdirSync(FILES_DIR, { recursive: true });
   fs.writeFileSync(path.join(/*turbopackIgnore: true*/ FILES_DIR, key), out);
+  savedFile(key);
   const old = kind === "avatar" ? user.avatarKey : user.bannerKey;
   const u = await mutate((s) => {
     const x = s.users!.find((y) => y.id === user.id)!;
@@ -40,7 +42,10 @@ export async function POST(req: Request) {
     x.imageVersion = (x.imageVersion || 0) + 1;
     return x;
   });
-  if (old) fs.rmSync(path.join(/*turbopackIgnore: true*/ FILES_DIR, path.basename(old)), { force: true });
+  if (old) {
+    fs.rmSync(path.join(/*turbopackIgnore: true*/ FILES_DIR, path.basename(old)), { force: true });
+    removeBackup(old);
+  }
   return NextResponse.json({ user: publicUser(u) });
 }
 
@@ -57,6 +62,9 @@ export async function DELETE(req: Request) {
     x.imageVersion = (x.imageVersion || 0) + 1;
     return x;
   });
-  if (old) fs.rmSync(path.join(/*turbopackIgnore: true*/ FILES_DIR, path.basename(old)), { force: true });
+  if (old) {
+    fs.rmSync(path.join(/*turbopackIgnore: true*/ FILES_DIR, path.basename(old)), { force: true });
+    removeBackup(old);
+  }
   return NextResponse.json({ user: publicUser(u) });
 }

@@ -8,7 +8,7 @@
     "build": "next build",
     "start": "next start",
     "seed": "node scripts/seed.mjs",
-    "start:demo": "node scripts/seed.mjs --if-empty && next start"
+    "start:demo": "node scripts/sync.mjs pull && node scripts/seed.mjs --if-empty && node scripts/sync.mjs push && next start"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^1.2.12",

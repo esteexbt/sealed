@@ -31,3 +31,10 @@ services:
         sync: false
       - key: PAYPAL_LOGIN
         value: "off"
+      # Keeps projects, accounts and files across restarts (Render's free disk is wiped on restart).
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: DEMO_LOGIN
+        value: "on"

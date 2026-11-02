@@ -87,6 +87,8 @@ Open http://localhost:3000. The seed script prints a client portal link.
 
 `render.yaml` deploys Sealed to Render as a single web service. The demo start script seeds data only when the store is empty.
 
+Render's free plan wipes the disk on every restart, so Sealed keeps an off-server copy in a private Supabase Storage bucket (free tier): every change to the store and every saved file is copied there as it happens (`lib/backup.ts`), and `scripts/sync.mjs pull` restores it all before the server starts. Set `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` to turn it on; without them Sealed uses the local disk only.
+
 ## Testing notes for judges
 
 - Live demo: _added at submission_

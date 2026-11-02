@@ -9,7 +9,7 @@ const DATA = process.env.DATA_DIR || path.join(process.cwd(), "data");
 const FILES = path.join(DATA, "files");
 if (process.argv.includes("--if-empty") && fs.existsSync(path.join(DATA, "store.json"))) {
   const existing = JSON.parse(fs.readFileSync(path.join(DATA, "store.json"), "utf8"));
-  if (existing.projects?.length) {
+  if (existing.projects?.length || existing.users?.length) {
     console.log("Data already present, skipping seed.");
     process.exit(0);
   }

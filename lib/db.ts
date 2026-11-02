@@ -2,6 +2,7 @@ import "server-only";
 import fs from "node:fs";
 import path from "node:path";
 import { customAlphabet } from "nanoid";
+import { backupFile, backupStore } from "./backup";
 import type { ActivityEvent, Milestone, Project, Store } from "./types";
 
 const DATA_DIR = process.env.DATA_DIR || path.join(/*turbopackIgnore: true*/ process.cwd(), "data");
@@ -30,7 +31,11 @@ function write(store: Store) {
   const tmp = STORE_FILE + ".tmp";
   fs.writeFileSync(tmp, JSON.stringify(store, null, 2));
   fs.renameSync(tmp, STORE_FILE);
+  backupStore(STORE_FILE);
 }
+
+/** Call after writing a file into FILES_DIR, so it's kept off-server too. */
+export const savedFile = (key: string) => backupFile(FILES_DIR, key);
 
 /** Serialised read-modify-write so concurrent requests can't clobber each other. */
 let chain: Promise<unknown> = Promise.resolve();

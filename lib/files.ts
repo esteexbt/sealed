@@ -3,7 +3,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import sharp from "sharp";
-import { FILES_DIR, id } from "./db";
+import { FILES_DIR, id, savedFile } from "./db";
 import type { Deliverable } from "./types";
 import { isPdf, pdfPageCount, renderPdfPage } from "./pdf";
 
@@ -67,6 +67,7 @@ async function writeSealedPreview(raster: Buffer, previewKey: string) {
     .composite([{ input: watermarkSvg(info.width, info.height), top: 0, left: 0 }])
     .jpeg({ quality: 62 })
     .toFile(path.join(/*turbopackIgnore: true*/ FILES_DIR, previewKey));
+  savedFile(previewKey);
 }
 
 /** Tiled diagonal watermark, sized to the preview. */
@@ -93,6 +94,7 @@ export async function storeDeliverable(file: File): Promise<Deliverable> {
   const originalKey = `${fid}-orig${ext}`;
   const buf = Buffer.from(await file.arrayBuffer());
   fs.writeFileSync(path.join(/*turbopackIgnore: true*/ FILES_DIR, originalKey), buf);
+  savedFile(originalKey);
 
   const sha256 = crypto.createHash("sha256").update(buf).digest("hex");
   let width: number | undefined;
