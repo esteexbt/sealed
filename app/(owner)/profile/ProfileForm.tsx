@@ -95,12 +95,14 @@ export function ProfileForm({ user, projects, google, paypal, notice, initialErr
         </div>
         <div className="pf-row">
           <div className="pf-row-main"><strong className="small">Google</strong></div>
-          {user.google ? <span className="pf-ok">Linked</span> : google ? <a className="btn btn-ghost" href="/api/auth/google/start">Link Google</a> : <span className="tiny muted">Not available yet</span>}
+          {user.google ? <span className="pf-ok">Linked</span> : google ? <a className="btn btn-ghost" href="/api/auth/google/start">Link Google</a> : <span className="tiny muted">Not set up</span>}
         </div>
+        {(paypal || user.paypal) && (
         <div className="pf-row">
           <div className="pf-row-main"><strong className="small">PayPal</strong></div>
           {user.paypal ? <span className="pf-ok">Linked</span> : paypal ? <a className="btn btn-ghost" href="/api/auth/paypal/start">Link PayPal</a> : <span className="tiny muted">Not available yet</span>}
         </div>
+        )}
       </section>
 
       {!user.demo && (
