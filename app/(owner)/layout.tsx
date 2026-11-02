@@ -5,6 +5,8 @@ import { BottomNav, Nav } from "@/components/Nav";
 import { Logo } from "@/components/Seal";
 import { DialogProvider } from "@/components/Dialog";
 import { AccountMenu } from "@/components/AccountMenu";
+import { NavProgress } from "@/components/NavProgress";
+import { Suspense } from "react";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +19,9 @@ export default async function OwnerLayout({ children }: { children: React.ReactN
   const avatar = user.handle && user.avatarKey ? `/api/u/${user.handle}/image/avatar?v=${user.imageVersion || 0}` : null;
   return (
     <DialogProvider>
+      <Suspense fallback={null}>
+        <NavProgress />
+      </Suspense>
       <header className="topbar">
         <Link href="/" className="wordmark" aria-label="Sealed home">
           <Logo height={30} />

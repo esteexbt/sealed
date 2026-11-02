@@ -112,7 +112,7 @@ export function LedgerGrid({ rows }: { rows: LedgerRow[] }) {
       if (isOpen(n.data)) open += n.data.amount;
       if (isHeld(n.data)) hold += n.data.amount;
     });
-    setTotals([
+    const next: Row[] = [
       {
         kind: "total",
         projectId: "",
@@ -130,7 +130,8 @@ export function LedgerGrid({ rows }: { rows: LedgerRow[] }) {
         reminders: 0,
         files: 0,
       },
-    ]);
+    ];
+    setTotals((prev) => (prev[0] && prev[0].client === next[0].client && prev[0].status === next[0].status && prev[0].amount === next[0].amount ? prev : next));
   }, [currency, fmt]);
 
   const remind = useCallback(
@@ -285,6 +286,25 @@ export function LedgerGrid({ rows }: { rows: LedgerRow[] }) {
     api.current?.onFilterChanged();
   }
 
+  // Everything handed to the grid must keep the same identity between renders: a new function
+  // or object makes the grid re-run filters, which recomputed totals, which re-rendered: a loop.
+  const defaultColDef = useMemo<ColDef<Row>>(() => ({ sortable: true, resizable: true }), []);
+  const getRowId = useCallback((p: { data: Row }) => p.data.milestoneId, []);
+  const isExternalFilterPresent = useCallback(() => filterRef.current !== "all", []);
+  const doesExternalFilterPass = useCallback((n: IRowNode<Row>) => {
+    const st = n.data?.status;
+    const f = filterRef.current;
+    return f === "overdue" ? st === "Overdue" : f === "unpaid" ? isOpen(n.data) : f === "held" ? isHeld(n.data) : f === "paid" ? st === "Paid" : true;
+  }, []);
+  const onGridReady = useCallback(
+    (e: { api: GridApi<Row> }) => {
+      api.current = e.api;
+      recomputeTotals();
+    },
+    [recomputeTotals],
+  );
+  const openRow = useCallback((e: { data?: Row }) => e.data && !e.data.kind && router.push(`/projects/${e.data.projectId}`), [router]);
+
   if (!rows.length) return <p className="muted">Nothing here yet. Create a project and its milestones appear in the ledger.</p>;
 
   return (
@@ -322,28 +342,21 @@ export function LedgerGrid({ rows }: { rows: LedgerRow[] }) {
           columnDefs={cols}
           quickFilterText={quick}
           includeHiddenColumnsInQuickFilter
-          defaultColDef={{ sortable: true, resizable: true }}
+          defaultColDef={defaultColDef}
           domLayout="autoHeight"
           rowHeight={46}
-          getRowId={(p) => p.data.milestoneId}
+          getRowId={getRowId}
           pinnedBottomRowData={totals}
           rowClassRules={rowClassRules}
           singleClickEdit
           stopEditingWhenCellsLoseFocus
           tooltipShowDelay={400}
-          isExternalFilterPresent={() => filterRef.current !== "all"}
-          doesExternalFilterPass={(n) => {
-            const s = n.data?.status;
-            const f = filterRef.current;
-            return f === "overdue" ? s === "Overdue" : f === "unpaid" ? isOpen(n.data) : f === "held" ? isHeld(n.data) : f === "paid" ? s === "Paid" : true;
-          }}
-          onGridReady={(e) => {
-            api.current = e.api;
-            recomputeTotals();
-          }}
+          isExternalFilterPresent={isExternalFilterPresent}
+          doesExternalFilterPass={doesExternalFilterPass}
+          onGridReady={onGridReady}
           onFilterChanged={recomputeTotals}
           onCellValueChanged={onEdit}
-          onRowDoubleClicked={(e) => e.data && !e.data.kind && router.push(`/projects/${e.data.projectId}`)}
+          onRowDoubleClicked={openRow}
           pagination={rows.length > 25}
           paginationPageSize={25}
           paginationPageSizeSelector={false}

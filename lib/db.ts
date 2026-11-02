@@ -22,15 +22,31 @@ function ensure() {
   }
 }
 
-export function read(): Store {
+// The store is kept in memory and only re-read when the file changes, so pages don't
+// parse the whole JSON on every request (this matters a lot on small hosting plans).
+let cache: { mtimeMs: number; size: number; text: string; store: Store } | null = null;
+function load() {
   ensure();
-  return JSON.parse(fs.readFileSync(STORE_FILE, "utf8")) as Store;
+  const st = fs.statSync(STORE_FILE);
+  if (!cache || cache.mtimeMs !== st.mtimeMs || cache.size !== st.size) {
+    const text = fs.readFileSync(STORE_FILE, "utf8");
+    cache = { mtimeMs: st.mtimeMs, size: st.size, text, store: JSON.parse(text) as Store };
+  }
+  return cache;
+}
+
+/** The current store, for reading. Change it only through mutate(). */
+export function read(): Store {
+  return load().store;
 }
 
 function write(store: Store) {
+  const text = JSON.stringify(store, null, 2);
   const tmp = STORE_FILE + ".tmp";
-  fs.writeFileSync(tmp, JSON.stringify(store, null, 2));
+  fs.writeFileSync(tmp, text);
   fs.renameSync(tmp, STORE_FILE);
+  const st = fs.statSync(STORE_FILE);
+  cache = { mtimeMs: st.mtimeMs, size: st.size, text, store: JSON.parse(text) as Store };
   backupStore(STORE_FILE);
 }
 
@@ -41,7 +57,8 @@ export const savedFile = (key: string) => backupFile(FILES_DIR, key);
 let chain: Promise<unknown> = Promise.resolve();
 export function mutate<T>(fn: (s: Store) => T): Promise<T> {
   const next = chain.then(() => {
-    const s = read();
+    // A private copy: if fn throws halfway, the cached store stays untouched.
+    const s = JSON.parse(load().text) as Store;
     const out = fn(s);
     write(s);
     return out;

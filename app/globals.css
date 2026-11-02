@@ -1204,3 +1204,9 @@ p { margin: 0; }
 .pr-actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
 .pr-ask { display: grid; gap: 10px; padding: 16px; border-radius: 12px; background: var(--paper); }
 @media (max-width: 560px) { .pr-actions { width: 100%; } .pr-actions .btn { flex: 1; } }
+
+/* Page-change progress bar */
+.navprog { position: fixed; top: 0; left: 0; height: 3px; width: 0; z-index: 1000; background: linear-gradient(90deg, var(--seal), var(--seal-light)); box-shadow: 0 0 10px rgba(76, 68, 224, .5); opacity: 0; pointer-events: none; border-radius: 0 3px 3px 0; }
+.navprog-loading { opacity: 1; width: 85%; transition: width 6s cubic-bezier(.1, .6, .2, 1), opacity .1s; }
+.navprog-done { opacity: 0; width: 100%; transition: width .2s ease-out, opacity .3s .15s; }
+@media (prefers-reduced-motion: reduce) { .navprog-loading { transition: opacity .1s; width: 60%; } }

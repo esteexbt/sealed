@@ -84,7 +84,7 @@ export default async function Dashboard() {
               const hold = held(p);
               return (
                 <li key={p.id}>
-                  <Link href={`/projects/${projectSlug(p)}`} className="project-row">
+                  <Link href={`/projects/${projectSlug(p)}`} className="project-row" prefetch={false}>
                     <div className="project-row-main">
                       <span className="project-client">{p.clientName}</span>
                       <span className="project-title">{p.title}</span>
