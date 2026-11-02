@@ -146,7 +146,7 @@ function ConfirmDialog({
             <input
               id="dlg-type"
               ref={inputRef}
-              className="input"
+              className={`input${tone === "danger" ? " input-danger" : ""}`}
               autoComplete="off"
               value={typed}
               onChange={(e) => setTyped(e.target.value)}
