@@ -1,38 +1,33 @@
-import { DOT, MARK } from "./brandPaths";
+import { MARK } from "./brandPaths";
 
-const STEPS = [
-  ["Brief in", "Paste, upload or link what the client sent."],
-  ["Planned", "AI splits it into priced, dated stages."],
-  ["Sealed", "Each stage is paid into a PayPal hold."],
-  ["Released", "The client approves, you get paid."],
-];
+const DEPTH = 14; // layers that give the mark its thickness as it turns
 
 /**
- * The Fold, told as the product's story on a loop: the mark arrives, the seal drops in
- * and presses closed, holds, then opens green when payment is released.
- * Pure CSS, so it stays smooth and costs nothing; it stops for reduced-motion users.
+ * The Sealed mark floating on the page: it hangs, bobs gently and turns in 3D,
+ * with a soft shadow below that breathes with it. Pure CSS; still for reduced motion.
  */
 export function FoldAnimation({ busy = false }: { busy?: boolean }) {
+  const face = (body: string, dot: string) => (
+    <svg viewBox={`0 0 ${MARK.w} ${MARK.h}`}>
+      <path d={MARK.body} fill={body} fillRule="evenodd" />
+      <path d={MARK.dot} fill={dot} />
+    </svg>
+  );
   return (
     <div className={`fold-stage${busy ? " fold-busy" : ""}`} aria-hidden>
-      <div className="fold-glow" />
-      <svg className="fold-mark" viewBox={`-20 -30 ${MARK.w + 40} ${MARK.h + 50}`}>
-        <g className="fold-body">
-          <path d={MARK.body} fill="#fff" fillRule="evenodd" />
-        </g>
-        <circle className="fold-ring" cx={DOT.cx} cy={DOT.cy} r={DOT.r} />
-        <g className="fold-dot" style={{ transformOrigin: `${DOT.cx}px ${DOT.cy}px` }}>
-          <path d={MARK.dot} />
-        </g>
-      </svg>
-      <ol className="fold-steps">
-        {STEPS.map(([t, d], i) => (
-          <li key={t} style={{ animationDelay: `${i * 2}s` }}>
-            <strong>{t}</strong>
-            <span>{d}</span>
-          </li>
-        ))}
-      </ol>
+      <div className="fold-hang">
+        <div className="fold-spin">
+          {Array.from({ length: DEPTH }, (_, i) => (
+            <div key={i} className="fold-layer" style={{ transform: `translateZ(${-i * 0.9}px)` }}>
+              {face(i === 0 ? "#12172E" : "#0A0D1C", i === 0 ? "#4C44E0" : "#2A2580")}
+            </div>
+          ))}
+          <div className="fold-layer fold-back" style={{ transform: `translateZ(${-(DEPTH - 1) * 0.9}px) rotateY(180deg)` }}>
+            {face("#12172E", "#4C44E0")}
+          </div>
+        </div>
+      </div>
+      <div className="fold-shadow" />
     </div>
   );
 }
