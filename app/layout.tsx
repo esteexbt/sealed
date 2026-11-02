@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "@fontsource/young-serif/400.css";
 import "@fontsource-variable/public-sans";
+import "@fontsource-variable/archivo/wdth.css";
 import "./globals.css";
 
 const url = process.env.APP_URL || "http://localhost:3000";

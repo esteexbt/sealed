@@ -1100,3 +1100,17 @@ p { margin: 0; }
 .avatar.has-photo img, .tab-avatar.has-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .avatar-link:hover .avatar.has-photo { box-shadow: 0 0 0 2px var(--seal); background: var(--rule); }
 .tab[aria-current="page"] .tab-avatar.has-photo, .acct-open .tab-avatar.has-photo { box-shadow: 0 0 0 2px var(--seal); background: var(--rule); }
+
+/* Dial number: a narrow, tall figure with clear space inside the ring. */
+.dial-num { padding: 26px; }
+.dial-num strong { font-family: "Archivo Variable", var(--sans); font-stretch: 72%; font-weight: 640; font-size: 2.15rem; letter-spacing: -0.01em; line-height: 1; }
+.dial-num span { margin-top: 6px; font-size: 0.72rem; }
+@media (max-width: 760px) { .dial-num { padding: 18px; } .dial-num strong { font-size: 1.7rem; } .dial-num span { font-size: 0.66rem; margin-top: 4px; } }
+
+/* Freelancer chip, a touch smaller */
+.fc { gap: 11px; padding: 6px 14px 6px 6px; }
+.fc-avatar { width: 42px; height: 42px; font-size: 0.92rem; box-shadow: 0 0 0 2px var(--sheet), 0 0 0 3px var(--seal-soft); }
+.fc-name { font-size: 1rem; }
+.fc-meta { font-size: 0.8rem; }
+.fc-view { font-size: 0.8rem; padding-left: 12px; margin-left: 4px; }
+@media (max-width: 560px) { .fc-avatar { width: 40px; height: 40px; } .fc-name { font-size: 0.98rem; } }
