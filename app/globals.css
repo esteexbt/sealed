@@ -1342,3 +1342,7 @@ p { margin: 0; }
 @media (max-width: 620px) { .acc-grid { grid-template-columns: minmax(0, 1fr); } }
 .field { grid-template-columns: minmax(0, 1fr); }
 .field > * { min-width: 0; }
+
+/* Long PayPal emails stay on one line and shorten with … (full address is in the receipt) */
+.payout-email { display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom; }
+.pr-paid .payout { min-width: 0; overflow: hidden; }

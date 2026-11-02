@@ -18,11 +18,15 @@ export function PayoutLine({ payout, currency }: { payout: Payout; currency: str
   };
 
   if (payout.status === "sent")
-    return <p className={`payout payout-sent`}><b>{amt}</b> sent to {payout.email}</p>;
+    return (
+      <p className="payout payout-sent">
+        <b>{amt}</b> sent to <span className="payout-email" title={payout.email || ""}>{payout.email}</span>
+      </p>
+    );
   if (payout.status === "pending")
     return (
       <p className="payout payout-pending">
-        <b>{amt}</b> on its way to {payout.email}
+        <b>{amt}</b> on its way to <span className="payout-email" title={payout.email || ""}>{payout.email}</span>
         {payout.paypalStatus === "UNCLAIMED" && <> · that email has no PayPal account yet, so PayPal is holding it for them</>}
       </p>
     );
