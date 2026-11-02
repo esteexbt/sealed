@@ -1210,3 +1210,10 @@ p { margin: 0; }
 .navprog-loading { opacity: 1; width: 85%; transition: width 6s cubic-bezier(.1, .6, .2, 1), opacity .1s; }
 .navprog-done { opacity: 0; width: 100%; transition: width .2s ease-out, opacity .3s .15s; }
 @media (prefers-reduced-motion: reduce) { .navprog-loading { transition: opacity .1s; width: 60%; } }
+
+/* Log out at the bottom of the profile, on phones (desktop uses the avatar menu) */
+.acc-out { display: none; }
+@media (max-width: 720px) {
+  .acc-out { display: block; padding: 8px 0 24px; }
+  .acc-out-btn { width: 100%; justify-content: center; gap: 8px; min-height: 48px; }
+}

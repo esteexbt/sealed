@@ -34,6 +34,16 @@ export function AccountMenu({ name, email, initials, avatar, status, variant = "
     window.location.href = "/login";
   }
 
+  // On phones the Profile tab simply opens the profile; Log out lives at the bottom of that page.
+  if (variant === "tab") {
+    return (
+      <Link href="/profile" className="tab" aria-current={path.startsWith("/profile") ? "page" : undefined}>
+        <span className={`tab-avatar${avatar ? " has-photo" : ""}`} aria-hidden>{face}</span>
+        <span>Profile</span>
+      </Link>
+    );
+  }
+
   return (
     <div ref={wrap} className={`acct acct-${variant}${open ? " acct-open" : ""}`}>
       {variant === "top" ? (

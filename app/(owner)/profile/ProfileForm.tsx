@@ -62,7 +62,7 @@ export function ProfileForm({
   const [handle, setHandle] = useState(initial.handle);
   const [paypalEmail, setPaypalEmail] = useState(initial.paypalEmail || "");
   const [links, setLinks] = useState<Partial<Record<SocialKind, string>>>(initial.socials);
-  const [busy, setBusy] = useState<"" | "save" | "avatar" | "banner">("");
+  const [busy, setBusy] = useState<"" | "save" | "avatar" | "banner" | "logout">("");
   const [error, setError] = useState("");
   const avatarIn = useRef<HTMLInputElement>(null);
   const bannerIn = useRef<HTMLInputElement>(null);
@@ -240,6 +240,22 @@ export function ProfileForm({
         </div>
         )}
       </form>
+
+      <section className="acc-out">
+        <button
+          type="button"
+          className="btn btn-danger-outline acc-out-btn"
+          disabled={busy === "logout"}
+          onClick={async () => {
+            setBusy("logout");
+            await fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
+            window.location.href = "/login";
+          }}
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M14 4.5h3.5a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H14M10 16l-4-4 4-4M6 12h9.5" /></svg>
+          {busy === "logout" ? "Logging out…" : "Log out"}
+        </button>
+      </section>
     </div>
   );
 }
