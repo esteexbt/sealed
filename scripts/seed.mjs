@@ -117,8 +117,17 @@ const activity = [
 ].map((a) => ({ id: rid(), ...a }));
 
 // The demo freelancer. Judges open it from "Try the demo" on the sign-in page; it has no password.
-const demo = { id: rid(), email: "demo@sealed.app", name: "Ada Okafor", passwordHash: null, googleId: null, paypalId: null, paypalEmail: null, demo: true, createdAt: ago(24 * 60) };
+const demo = {
+  id: rid(), email: "demo@sealed.app", name: "Ada Okafor", passwordHash: null, googleId: null, paypalId: null, paypalEmail: null, demo: true, createdAt: ago(24 * 60),
+  handle: "ada-okafor",
+  headline: "Brand identity and motion designer",
+  bio: "I help new food, fitness and lifestyle brands look ready on day one: logos, brand systems, launch videos and the social posts that go with them.\n\nEvery project runs in stages. You see the work before you pay for it, and your payment is held by PayPal until you approve.",
+  socials: { website: "https://example.com/ada", email: "ada@example.com" },
+};
 for (const p of [bean, kemi, halo]) p.ownerId = demo.id;
+// Ratings from clients who paid through the portal.
+halo.review = { rating: 5, comment: "Clear stages, no surprises. We approved each part of the launch video before paying, and it went out on time.", at: ago(24 * 18) };
+kemi.review = { rating: 4, comment: "Great design work and easy to work with. Being able to review everything before releasing payment made us comfortable.", at: ago(24 * 10) };
 
 fs.writeFileSync(path.join(DATA, "store.json"), JSON.stringify({ users: [demo], projects: [bean, kemi, halo], activity }, null, 2));
 console.log(`Seeded a demo account (Try the demo on the sign-in page) with 3 projects. Client portal: /p/${bean.portalToken}`);

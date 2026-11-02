@@ -6,6 +6,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { id, mutate, read } from "./db";
 import type { Project, User } from "./types";
+import { freeHandle } from "./profile";
 
 export const SESSION_COOKIE = "sealed_session";
 const SESSION_DAYS = 30;
@@ -68,7 +69,22 @@ export const findUserByEmail = (email: string) => users().find((u) => u.email ==
 export const getUser = (uid: string) => users().find((u) => u.id === uid);
 
 /** Public view of a user: never send the password hash anywhere. */
-export const publicUser = (u: User) => ({ id: u.id, email: u.email, name: u.name, paypalEmail: u.paypalEmail || null, google: Boolean(u.googleId), paypal: Boolean(u.paypalId), hasPassword: Boolean(u.passwordHash), demo: Boolean(u.demo) });
+export const publicUser = (u: User) => ({
+  id: u.id,
+  email: u.email,
+  name: u.name,
+  paypalEmail: u.paypalEmail || null,
+  google: Boolean(u.googleId),
+  paypal: Boolean(u.paypalId),
+  hasPassword: Boolean(u.passwordHash),
+  demo: Boolean(u.demo),
+  handle: u.handle || "",
+  headline: u.headline || "",
+  bio: u.bio || "",
+  socials: u.socials || {},
+  avatar: u.avatarKey && u.handle ? `/api/u/${u.handle}/image/avatar?v=${u.imageVersion || 0}` : null,
+  banner: u.bannerKey && u.handle ? `/api/u/${u.handle}/image/banner?v=${u.imageVersion || 0}` : null,
+});
 
 /**
  * Creates an account. The very first account on a fresh install takes over any projects
@@ -90,6 +106,7 @@ export async function createUser(input: { email: string; name: string; password?
       demo: input.demo || false,
       createdAt: new Date().toISOString(),
     };
+    u.handle = freeHandle(u.name, s.users);
     const firstReal = !u.demo && !s.users.some((x) => !x.demo);
     s.users.push(u);
     if (firstReal) for (const p of s.projects) if (!p.ownerId) p.ownerId = u.id;
@@ -163,5 +180,15 @@ export async function linkOAuth(userId: string, kind: "google" | "paypal", sub: 
     u[key] = sub;
     if (kind === "paypal" && !u.paypalEmail) u.paypalEmail = normEmail(email);
     return u;
+  });
+}
+
+/** Gives older accounts (made before public profiles) a handle. Returns the user as stored. */
+export async function ensureHandle(u: User): Promise<User> {
+  if (u.handle) return u;
+  return mutate((s) => {
+    const x = s.users!.find((y) => y.id === u.id)!;
+    if (!x.handle) x.handle = freeHandle(x.name, s.users!);
+    return x;
   });
 }

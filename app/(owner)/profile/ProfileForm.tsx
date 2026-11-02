@@ -1,89 +1,230 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useRef, useState } from "react";
 import { useDialog } from "@/components/Dialog";
+import { ShareProfile } from "@/components/ShareProfile";
+import { SocialIcon, Stars } from "@/components/SocialIcon";
+import type { SocialKind } from "@/lib/types";
 
 interface PublicUser {
   id: string;
   email: string;
   name: string;
   paypalEmail: string | null;
-  google: boolean;
-  paypal: boolean;
-  hasPassword: boolean;
   demo: boolean;
+  handle: string;
+  headline: string;
+  bio: string;
+  socials: Partial<Record<SocialKind, string>>;
+  avatar: string | null;
+  banner: string | null;
 }
 
 const initials = (n: string) => n.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]!.toUpperCase()).join("") || "?";
+const CameraIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <path d="M4 8.5A2 2 0 0 1 6 6.5h1.6l1.4-2h6l1.4 2H18a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8.5Z" />
+    <circle cx="12" cy="12.5" r="3.3" />
+  </svg>
+);
 
-export function ProfileForm({ user, projects, google, paypal, notice, initialError }: { user: PublicUser; projects: number; google: boolean; paypal: boolean; notice: string; initialError: string }) {
+export function ProfileForm({
+  user: initial,
+  projects,
+  rating,
+  reviews,
+  baseUrl,
+  socials: SOCIALS,
+}: {
+  user: PublicUser;
+  projects: number;
+  rating: number | null;
+  reviews: number;
+  baseUrl: string;
+  socials: { kind: SocialKind; label: string; placeholder: string }[];
+}) {
   const dialog = useDialog();
-  const [name, setName] = useState(user.name);
-  const [paypalEmail, setPaypalEmail] = useState(user.paypalEmail || "");
-  const [current, setCurrent] = useState("");
-  const [next, setNext] = useState("");
-  const [busy, setBusy] = useState<"" | "profile" | "password" | "out">("");
-  const [error, setError] = useState(initialError);
-  useEffect(() => {
-    if (notice) dialog.notify(notice);
-    // Only on arrival from a linking redirect.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const [user, setUser] = useState(initial);
+  const [name, setName] = useState(initial.name);
+  const [headline, setHeadline] = useState(initial.headline);
+  const [bio, setBio] = useState(initial.bio);
+  const [handle, setHandle] = useState(initial.handle);
+  const [paypalEmail, setPaypalEmail] = useState(initial.paypalEmail || "");
+  const [links, setLinks] = useState<Partial<Record<SocialKind, string>>>(initial.socials);
+  const [busy, setBusy] = useState<"" | "save" | "avatar" | "banner">("");
+  const [error, setError] = useState("");
+  const avatarIn = useRef<HTMLInputElement>(null);
+  const bannerIn = useRef<HTMLInputElement>(null);
 
-  async function save(body: object, kind: "profile" | "password", done: string) {
-    setBusy(kind);
-    setError("");
-    const res = await fetch("/api/profile", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-    setBusy("");
-    const json = await res.json();
-    if (!res.ok) return setError(json.error || "That didn’t save.");
-    dialog.notify(done);
-    if (kind === "password") {
-      setCurrent("");
-      setNext("");
-    }
+  const dirty =
+    name !== user.name || headline !== user.headline || bio !== user.bio || handle !== user.handle || paypalEmail !== (user.paypalEmail || "") || JSON.stringify(cleanLinks(links)) !== JSON.stringify(cleanLinks(user.socials));
+
+  function cleanLinks(l: Partial<Record<SocialKind, string>>) {
+    return Object.fromEntries(Object.entries(l).filter(([, v]) => v && v.trim()).map(([k, v]) => [k, v!.trim()]));
   }
 
+  async function save() {
+    setBusy("save");
+    setError("");
+    const res = await fetch("/api/profile", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, headline, bio, handle, paypalEmail, socials: cleanLinks(links) }),
+    });
+    const json = await res.json();
+    setBusy("");
+    if (!res.ok) return setError(json.error || "That didn’t save.");
+    setUser(json.user);
+    dialog.notify("Profile saved.");
+  }
+
+  async function upload(kind: "avatar" | "banner", file: File | undefined) {
+    if (!file) return;
+    setBusy(kind);
+    setError("");
+    const fd = new FormData();
+    fd.append("file", file);
+    const res = await fetch(`/api/profile/image?kind=${kind}`, { method: "POST", body: fd });
+    const json = await res.json().catch(() => ({}));
+    setBusy("");
+    if (!res.ok) return setError(json.error || "That image didn’t upload.");
+    setUser((u) => ({ ...u, avatar: json.user.avatar, banner: json.user.banner }));
+    dialog.notify(kind === "avatar" ? "Profile photo updated." : "Banner updated.");
+  }
+  async function removeImage(kind: "avatar" | "banner") {
+    setBusy(kind);
+    const res = await fetch(`/api/profile/image?kind=${kind}`, { method: "DELETE" });
+    const json = await res.json().catch(() => ({}));
+    setBusy("");
+    if (res.ok) setUser((u) => ({ ...u, avatar: json.user.avatar, banner: json.user.banner }));
+  }
+
+  const profileUrl = `${baseUrl}${user.handle}`;
+
   return (
-    <div className="profile">
-      <header className="profile-head">
-        <span className="avatar" aria-hidden>{initials(name)}</span>
-        <div>
-          <h1>{name || "Your profile"}</h1>
+    <div className="acc">
+      <section className="acc-hero">
+        <div className="acc-banner" style={user.banner ? { backgroundImage: `url(${user.banner})` } : undefined}>
+          <div className="acc-banner-tools">
+            <button type="button" className="acc-img-btn" onClick={() => bannerIn.current?.click()} disabled={busy !== ""}>
+              <CameraIcon /> {busy === "banner" ? "Uploading…" : user.banner ? "Change banner" : "Add banner"}
+            </button>
+            {user.banner && (
+              <button type="button" className="acc-img-btn acc-img-quiet" onClick={() => removeImage("banner")} disabled={busy !== ""}>
+                Remove
+              </button>
+            )}
+          </div>
+          <input ref={bannerIn} type="file" accept="image/png,image/jpeg,image/webp" hidden onChange={(e) => upload("banner", e.target.files?.[0])} />
+        </div>
+        <div className="acc-hero-row">
+          <div className="acc-avatar-wrap">
+            <button type="button" className="acc-avatar" onClick={() => avatarIn.current?.click()} disabled={busy !== ""} aria-label="Change profile photo">
+              {user.avatar ? <img src={user.avatar} alt="" /> : <span>{initials(name)}</span>}
+              <span className="acc-avatar-cam" aria-hidden>{busy === "avatar" ? "…" : <CameraIcon />}</span>
+            </button>
+            <input ref={avatarIn} type="file" accept="image/png,image/jpeg,image/webp" hidden onChange={(e) => upload("avatar", e.target.files?.[0])} />
+          </div>
+          <div className="acc-hero-actions">
+            <a className="btn btn-ghost acc-view" href={`/u/${user.handle}`} target="_blank" rel="noreferrer">
+              View profile
+            </a>
+            <ShareProfile url={profileUrl} name={user.name} />
+          </div>
+        </div>
+        <div className="acc-hero-id">
+          <h1>{user.name}</h1>
           <p className="muted small">
-            {user.email} · {projects} project{projects === 1 ? "" : "s"}
-            {user.demo ? " · demo account" : ""}
+            {user.headline || "Add a headline so clients know what you do"}
+          </p>
+          <p className="tiny muted acc-meta">
+            {rating !== null ? (
+              <span className="acc-rating"><Stars value={rating} size={14} /> {rating.toFixed(1)} · {reviews} review{reviews === 1 ? "" : "s"}</span>
+            ) : (
+              <span>No reviews yet</span>
+            )}
+            <span>{projects} project{projects === 1 ? "" : "s"}</span>
+            <span>{user.email}</span>
+            {user.demo && <span>Demo account</span>}
+            <a className="acc-view-sm" href={`/u/${user.handle}`} target="_blank" rel="noreferrer">View profile</a>
           </p>
         </div>
-      </header>
-
-      {error && <p className="error small" role="alert">{error}</p>}
+      </section>
 
       <form
-        className="pf-card"
+        className="acc-form"
         onSubmit={(e) => {
           e.preventDefault();
-          save(user.demo ? { paypalEmail } : { name, paypalEmail }, "profile", "Profile saved.");
+          save();
         }}
       >
-        <h2>How clients see you</h2>
-        <div className="pf-grid">
-          <div className="field">
-            <label htmlFor="pf-name">Name</label>
-            <input id="pf-name" className="input" value={name} onChange={(e) => setName(e.target.value)} disabled={user.demo} required />
-            <span className="tiny muted">Shown on your client portals, reminders and PayPal invoices.</span>
+        <section className="acc-card">
+          <header>
+            <h2>About you</h2>
+            <p className="small muted">This is what clients see on your public profile and your project portals.</p>
+          </header>
+          <div className="acc-grid">
+            <div className="field">
+              <label htmlFor="pf-name">Name</label>
+              <input id="pf-name" className="input" value={name} onChange={(e) => setName(e.target.value)} disabled={user.demo} required maxLength={80} />
+            </div>
+            <div className="field">
+              <label htmlFor="pf-head">Headline</label>
+              <input id="pf-head" className="input" value={headline} onChange={(e) => setHeadline(e.target.value)} placeholder="Brand identity and UI designer" maxLength={80} />
+            </div>
           </div>
+          <div className="field">
+            <label htmlFor="pf-bio">Bio</label>
+            <textarea id="pf-bio" className="textarea" rows={4} value={bio} onChange={(e) => setBio(e.target.value)} maxLength={600} placeholder="What you do, who you do it for, and what working with you is like." />
+            <span className="tiny muted acc-count">{bio.length} / 600</span>
+          </div>
+        </section>
+
+        <section className="acc-card">
+          <header>
+            <h2>Your profile link</h2>
+            <p className="small muted">Share it with new clients so they can check your track record before they hire you.</p>
+          </header>
+          <div className="acc-link">
+            <span className="acc-link-base">{baseUrl.replace(/^https?:\/\//, "")}</span>
+            <input className="input" value={handle} onChange={(e) => setHandle(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))} disabled={user.demo} aria-label="Profile link name" maxLength={30} />
+          </div>
+        </section>
+
+        <section className="acc-card">
+          <header>
+            <h2>Social links</h2>
+            <p className="small muted">They show as buttons on your profile. Add only the ones you want clients to see.</p>
+          </header>
+          <div className="acc-socials">
+            {SOCIALS.map((s) => (
+              <label key={s.kind} className="acc-social">
+                <span className="acc-social-ic"><SocialIcon kind={s.kind} size={18} /></span>
+                <span className="acc-social-name">{s.label}</span>
+                <input className="input" value={links[s.kind] || ""} onChange={(e) => setLinks((l) => ({ ...l, [s.kind]: e.target.value }))} placeholder={s.placeholder} maxLength={200} inputMode={s.kind === "email" ? "email" : "url"} />
+              </label>
+            ))}
+          </div>
+        </section>
+
+        <section className="acc-card">
+          <header>
+            <h2>Getting paid</h2>
+            <p className="small muted">The PayPal account your payments belong to. Clients don’t see this.</p>
+          </header>
           <div className="field">
             <label htmlFor="pf-pp">PayPal email</label>
-            <input id="pf-pp" className="input" type="email" value={paypalEmail} onChange={(e) => setPaypalEmail(e.target.value)} placeholder="Where you get paid" />
-            <span className="tiny muted">The PayPal account your payments belong to.</span>
+            <input id="pf-pp" className="input" type="email" value={paypalEmail} onChange={(e) => setPaypalEmail(e.target.value)} placeholder="you@paypal.com" />
           </div>
-        </div>
-        <div className="pf-actions">
-          <button className="btn btn-seal" disabled={busy !== ""}>{busy === "profile" ? "Saving…" : "Save changes"}</button>
-        </div>
-      </form>
+        </section>
 
+        {(dirty || error) && (
+        <div className="acc-save acc-save-on">
+          {error ? <p className="error small" role="alert">{error}</p> : <p className="small muted">You have unsaved changes.</p>}
+          <button className="btn btn-seal" disabled={busy !== "" || !dirty}>{busy === "save" ? "Saving…" : "Save changes"}</button>
+        </div>
+        )}
+      </form>
     </div>
   );
 }

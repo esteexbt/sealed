@@ -8,7 +8,7 @@ import { ensurePreviews, isImage, isPdf, isReviewable } from "@/lib/files";
 import { Portal, type PortalMilestone } from "./Portal";
 import { clientNotices, unread } from "@/lib/notify";
 import { money } from "@/lib/actions";
-import { ownerName } from "@/lib/auth";
+import { ownerName, ownerOf } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -70,6 +70,9 @@ export default async function PortalPage({ params }: { params: Promise<{ token: 
       title={p.title}
       clientName={p.clientName}
       freelancer={ownerName(p)}
+      freelancerHandle={ownerOf(p)?.handle || null}
+      review={p.review ? { rating: p.review.rating, comment: p.review.comment } : null}
+      canReview={p.milestones.some((m) => m.status === "paid" && Boolean(m.payment?.captureId))}
       currency={p.currency}
       milestones={milestones}
       mode={paypalMode}

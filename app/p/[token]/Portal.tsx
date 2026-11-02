@@ -49,6 +49,9 @@ export interface PortalMilestone {
 
 interface Props {
   token: string;
+  freelancerHandle: string | null;
+  review: { rating: number; comment: string } | null;
+  canReview: boolean;
   title: string;
   clientName: string;
   freelancer: string;
@@ -130,6 +133,8 @@ export function Portal(props: Props) {
           <MilestoneBlock key={m.id} index={i} m={m} fmt={fmt} {...props} emphasis={nextPay?.id === m.id} onView={setViewing} />
         ))}
       </ol>
+
+      {props.canReview && <RateCard token={props.token} freelancer={props.freelancer} handle={props.freelancerHandle} initial={props.review} />}
 
       <footer className="portal-foot tiny muted">
         <span className="portal-by">Protected by <Logo height={16} label="Sealed" /></span>
@@ -481,5 +486,77 @@ function PayButton({
       </button>
       {error && <p className="error small" role="alert">{error}</p>}
     </div>
+  );
+}
+
+/** After paying for work, the client can rate the freelancer once for this project (and change it later). */
+function RateCard({ token, freelancer, handle, initial }: { token: string; freelancer: string; handle: string | null; initial: { rating: number; comment: string } | null }) {
+  const [rating, setRating] = useState(initial?.rating || 0);
+  const [hover, setHover] = useState(0);
+  const [comment, setComment] = useState(initial?.comment || "");
+  const [saved, setSaved] = useState(Boolean(initial));
+  const [editing, setEditing] = useState(!initial);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const first = freelancer.split(/\s+/)[0];
+  const words = ["", "Poor", "Fair", "Good", "Great", "Excellent"];
+
+  if (saved && !editing) {
+    return (
+      <section className="rate rate-done" aria-label="Your rating">
+        <div>
+          <strong>You rated {first} {rating} out of 5.</strong>
+          <p className="small muted">Thanks. It shows on {first}’s profile as a verified review, because you paid through Sealed.</p>
+        </div>
+        <div className="rate-actions">
+          {handle && <a className="btn btn-quiet" href={`/u/${handle}`} target="_blank" rel="noreferrer">View profile</a>}
+          <button type="button" className="btn btn-ghost" onClick={() => setEditing(true)}>Edit rating</button>
+        </div>
+      </section>
+    );
+  }
+  return (
+    <form
+      className="rate"
+      onSubmit={async (e) => {
+        e.preventDefault();
+        if (!rating) return setError("Pick a number of stars.");
+        setBusy(true);
+        setError("");
+        const res = await fetch("/api/portal", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token, action: "review", rating, note: comment }) });
+        setBusy(false);
+        if (!res.ok) return setError((await res.json()).error || "That didn’t save.");
+        setSaved(true);
+        setEditing(false);
+      }}
+    >
+      <div>
+        <h2>How was working with {first}?</h2>
+        <p className="small muted">Your rating appears on {first}’s Sealed profile, marked as verified because you paid through PayPal.</p>
+      </div>
+      <div className="rate-stars" role="radiogroup" aria-label="Rating" onMouseLeave={() => setHover(0)}>
+        {[1, 2, 3, 4, 5].map((n) => (
+          <button
+            key={n}
+            type="button"
+            role="radio"
+            aria-checked={rating === n}
+            aria-label={`${n} star${n === 1 ? "" : "s"}, ${words[n]}`}
+            className={`rate-star${(hover || rating) >= n ? " on" : ""}`}
+            onMouseEnter={() => setHover(n)}
+            onClick={() => setRating(n)}
+          >
+            <svg width="30" height="30" viewBox="0 0 24 24" aria-hidden><path d="M12 3.2l2.7 5.6 6.1.8-4.5 4.3 1.1 6.1L12 17l-5.4 3 1.1-6.1-4.5-4.3 6.1-.8L12 3.2Z" /></svg>
+          </button>
+        ))}
+        <span className="rate-word small">{words[hover || rating]}</span>
+      </div>
+      <textarea className="textarea" rows={3} maxLength={500} value={comment} onChange={(e) => setComment(e.target.value)} placeholder={`What was it like working with ${first}? (optional)`} />
+      {error && <p className="error small" role="alert">{error}</p>}
+      <div className="rate-actions">
+        {initial && <button type="button" className="btn btn-quiet" onClick={() => { setEditing(false); setRating(initial.rating); setComment(initial.comment); }}>Cancel</button>}
+        <button className="btn btn-seal" disabled={busy || !rating}>{busy ? "Saving…" : initial ? "Update rating" : "Submit rating"}</button>
+      </div>
+    </form>
   );
 }

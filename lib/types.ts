@@ -129,6 +129,25 @@ export interface User {
   /** The shared demo account judges can open without signing up. */
   demo?: boolean;
   createdAt: string;
+  /** Public profile at /u/{handle}. */
+  handle?: string;
+  headline?: string;
+  bio?: string;
+  avatarKey?: string | null;
+  bannerKey?: string | null;
+  /** Bumped on each image change, so cached copies refresh. */
+  imageVersion?: number;
+  socials?: Partial<Record<SocialKind, string>>;
+}
+
+export type SocialKind = "website" | "email" | "x" | "linkedin" | "instagram" | "behance" | "dribbble" | "github";
+
+/** A client's rating of the freelancer for one project. Only possible after a PayPal payment was captured. */
+export interface Review {
+  rating: number;
+  comment: string;
+  at: string;
+  updatedAt?: string;
 }
 
 export interface Project {
@@ -146,6 +165,7 @@ export interface Project {
   questions: string[];
   milestones: Milestone[];
   createdAt: string;
+  review?: Review | null;
 }
 
 export interface ActivityEvent {

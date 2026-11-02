@@ -1,21 +1,22 @@
-import { pageUser, publicUser } from "@/lib/auth";
+import { ensureHandle, pageUser, publicUser } from "@/lib/auth";
+import { config } from "@/lib/config";
 import { listProjects } from "@/lib/db";
-import { providers } from "@/lib/oauth";
+import { SOCIALS, profileStats } from "@/lib/profile";
 import { ProfileForm } from "./ProfileForm";
 
-export const metadata = { title: "Profile | Sealed" };
+export const metadata = { title: "My account | Sealed" };
 
-export default async function ProfilePage({ searchParams }: { searchParams: Promise<{ linked?: string; error?: string }> }) {
-  const user = await pageUser();
-  const { linked, error } = await searchParams;
+export default async function ProfilePage() {
+  const user = await ensureHandle(await pageUser());
+  const stats = profileStats(user.id);
   return (
     <ProfileForm
       user={publicUser(user)}
       projects={listProjects(user.id).length}
-      google={providers.google}
-      paypal={providers.paypal}
-      notice={linked ? `${linked === "google" ? "Google" : "PayPal"} is now linked to your account.` : ""}
-      initialError={error || ""}
+      rating={stats.rating}
+      reviews={stats.reviews.length}
+      baseUrl={`${config.appUrl}/u/`}
+      socials={SOCIALS}
     />
   );
 }
