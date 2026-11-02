@@ -4,6 +4,7 @@ import { paypalMode, aiMode } from "@/lib/config";
 import { BottomNav, Nav } from "@/components/Nav";
 import { Logo } from "@/components/Seal";
 import { DialogProvider } from "@/components/Dialog";
+import { AccountMenu } from "@/components/AccountMenu";
 
 export const dynamic = "force-dynamic";
 
@@ -11,6 +12,8 @@ const initials = (n: string) => n.split(/\s+/).filter(Boolean).slice(0, 2).map((
 
 export default async function OwnerLayout({ children }: { children: React.ReactNode }) {
   const user = await pageUser();
+  // Shown quietly in the account menu: whether payments are real sandbox ones and the AI is live.
+  const status = `${paypalMode === "sandbox" ? "PayPal sandbox" : "PayPal simulation"} · ${aiMode === "offline" ? "offline AI" : "live AI"}`;
   return (
     <DialogProvider>
       <header className="topbar">
@@ -18,16 +21,13 @@ export default async function OwnerLayout({ children }: { children: React.ReactN
           <Logo height={30} />
         </Link>
         <Nav />
-        <span className="mode-pill" title="Payment and AI mode">
-          {paypalMode === "sandbox" ? "PayPal sandbox" : "PayPal simulation"}, {aiMode === "offline" ? "offline AI" : "live AI"}
-        </span>
-        <Link href="/new" className="btn btn-ink topbar-new">New project</Link>
-        <Link href="/profile" className="avatar-link" aria-label={`Your profile: ${user.name}`} title={user.name}>
-          <span className="avatar" aria-hidden>{initials(user.name)}</span>
-        </Link>
+        <div className="topbar-end">
+          <Link href="/new" className="btn btn-ink topbar-new">New project</Link>
+          <AccountMenu name={user.name} email={user.email} initials={initials(user.name)} status={status} />
+        </div>
       </header>
       <main className="page">{children}</main>
-      <BottomNav initials={initials(user.name)} />
+      <BottomNav account={<AccountMenu variant="tab" name={user.name} email={user.email} initials={initials(user.name)} status={status} />} />
     </DialogProvider>
   );
 }

@@ -47,7 +47,7 @@ const Icon = ({ children }: { children: React.ReactNode }) => (
 );
 
 /** Phone navigation: a tab bar fixed to the bottom of the screen, with New project in the middle. */
-export function BottomNav({ initials }: { initials: string }) {
+export function BottomNav({ account }: { account: React.ReactNode }) {
   const path = usePathname();
   const tab = (href: string, label: string, icon: React.ReactNode) => {
     const active = href === "/" ? path === "/" || path.startsWith("/projects") : path.startsWith(href);
@@ -71,10 +71,7 @@ export function BottomNav({ initials }: { initials: string }) {
         <span>New</span>
       </Link>
       {tab("/assistant", "Assistant", I.assistant)}
-      <Link href="/profile" className="tab" aria-current={path.startsWith("/profile") ? "page" : undefined}>
-        <span className="tab-avatar" aria-hidden>{initials}</span>
-        <span>Profile</span>
-      </Link>
+      {account}
     </nav>
   );
 }

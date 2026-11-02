@@ -19,7 +19,7 @@ export interface AgentReply {
   text: string;
   steps: AgentStep[];
   /** Offline mode only: an action waiting for the user's yes. */
-  pending?: { kind: "remind" | "refund"; projectId: string; milestoneId: string; message?: string } | null;
+  pending?: { kind: "remind" | "refund"; projectId: string; milestoneId: string; message?: string; to?: string; amount?: string; title?: string } | null;
 }
 
 const SYSTEM = (u: User) => `You are Sealed's money assistant for ${u.name}, an independent freelancer.
@@ -186,13 +186,25 @@ async function offlineAgent(messages: CoreMessage[], u: User): Promise<AgentRepl
   if (/who owes|outstanding|unpaid|owed|receivable|overdue|money/.test(text)) {
     if (!rows.length) return { text: "Nobody owes you anything right now. Every milestone is paid.", steps: [{ tool: "list_receivables", source: "sealed", summary: "0 awaiting payment" }] };
     const total = rows.reduce((a, r) => a + r.amount, 0);
-    const lines = rows.map((r) => `${r.client}: ${money(r.amount, r.currency)} for ${r.milestone}, due ${r.dueDate}${r.overdue ? " (overdue)" : ""}`);
+    const lines = rows.map((r) => `- ${r.client}: ${money(r.amount, r.currency)} for ${r.milestone}, ${r.overdue ? "overdue since" : "due"} ${new Date(r.dueDate + "T12:00:00Z").toLocaleDateString("en-US", { month: "short", day: "numeric" })}`);
     const heldRows = listProjects(u.id).flatMap((p) => p.milestones.filter((m) => m.status === "in_review" || m.status === "changes_requested").map((m) => ({ p, m })));
-    if (heldRows.length) lines.push(`\nHeld by PayPal while clients review: ${heldRows.map((h) => `${h.p.clientName} ${money(h.m.amount, h.p.currency)} (${h.m.title}${h.m.status === "changes_requested" ? ", changes requested" : ""})`).join("; ")}.`);
+    if (heldRows.length) lines.push(`\nAlso held by PayPal while clients review: ${money(heldRows.reduce((a, h) => a + h.m.amount, 0), heldRows[0].p.currency)}.`);
     const overdue = rows.filter((r) => r.overdue);
     return {
-      text: `You're owed ${money(total, rows[0].currency)} across ${rows.length} milestone${rows.length === 1 ? "" : "s"}.\n${lines.join("\n")}${overdue.length ? `\n\nWant me to remind ${overdue[0].client}? Say "remind ${overdue[0].client}".` : ""}`,
+      text: `You're owed ${money(total, rows[0].currency)} across ${rows.length} stage${rows.length === 1 ? "" : "s"}.\n${lines.join("\n")}${overdue.length ? `\n\n${overdue[0].client} is the most overdue. Want me to send them a reminder?` : ""}`,
       steps: [{ tool: "list_receivables", source: "sealed", summary: `${rows.length} awaiting payment` }],
+    };
+  }
+
+  if (/held|hold|in review|reviewing|escrow/.test(text)) {
+    const heldRows = listProjects(u.id).flatMap((p) => p.milestones.filter((m) => m.status === "in_review" || m.status === "changes_requested").map((m) => ({ p, m })));
+    if (!heldRows.length) return { text: "Nothing is held by PayPal right now. Holds appear when a client pays a stage into review.", steps: [{ tool: "list_projects", source: "sealed", summary: "0 held" }] };
+    const total = heldRows.reduce((a, h) => a + h.m.amount, 0);
+    return {
+      text: `PayPal is holding ${money(total, heldRows[0].p.currency)} for you across ${heldRows.length} stage${heldRows.length === 1 ? "" : "s"}. It releases when each client approves, or automatically after 3 days.\n${heldRows
+        .map((h) => `- ${h.p.clientName}: ${money(h.m.amount, h.p.currency)} for ${h.m.title}${h.m.status === "changes_requested" ? " (changes requested)" : h.m.payment?.reviewEndsAt ? `, releases by ${new Date(h.m.payment.reviewEndsAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}` : ""}`)
+        .join("\n")}`,
+      steps: [{ tool: "list_projects", source: "sealed", summary: `${heldRows.length} held` }],
     };
   }
 
@@ -204,16 +216,16 @@ async function offlineAgent(messages: CoreMessage[], u: User): Promise<AgentRepl
     const cur = paid[0]?.p.currency || "USD";
     return {
       text: thisMonth.length
-        ? `You've collected ${money(sum, cur)} this month from ${thisMonth.length} payment${thisMonth.length === 1 ? "" : "s"}.\n${thisMonth.map((x) => `${x.p.clientName}: ${money(x.m.amount, cur)} for ${x.m.title}`).join("\n")}`
+        ? `You've collected ${money(sum, cur)} this month from ${thisMonth.length} payment${thisMonth.length === 1 ? "" : "s"}.\n${thisMonth.map((x) => `- ${x.p.clientName}: ${money(x.m.amount, cur)} for ${x.m.title}`).join("\n")}`
         : "No payments captured this month yet.",
       steps: [{ tool: "list_projects", source: "sealed", summary: `${paid.length} paid milestones` }],
     };
   }
 
-  const remind = text.match(/remind\s+(.+)/);
+  const remind = text.match(/remind\s+(.+)/) || (/^(yes|yeah|yep|sure|ok|okay|send (it|them|a reminder))\b/.test(text.trim()) ? ["", "most overdue"] : null);
   if (remind) {
-    const q = remind[1].replace(/[?.!]/g, "").trim();
-    const row = rows.find((r) => r.client.toLowerCase().includes(q) || r.project.toLowerCase().includes(q)) || rows.find((r) => r.overdue);
+    const q = remind[1].replace(/[?.!]/g, "").replace(/^(whoever is |the )?most overdue.*$/, "").trim();
+    const row = (q && rows.find((r) => r.client.toLowerCase().includes(q) || r.project.toLowerCase().includes(q))) || rows.filter((r) => r.overdue).sort((a, b) => a.dueDate.localeCompare(b.dueDate))[0];
     if (!row) return { text: `I couldn't find an unpaid milestone for "${q}".`, steps: [] };
     const p = listProjects(u.id).find((x) => x.id === row.projectId)!;
     const msg = await draftReminder({
@@ -226,14 +238,14 @@ async function offlineAgent(messages: CoreMessage[], u: User): Promise<AgentRepl
       freelancer: u.name,
     });
     return {
-      text: `Here's the reminder for ${row.client} (${row.clientEmail}). It goes out as a PayPal invoice for ${money(row.amount, row.currency)} with your portal link.\n\n${msg}\n\nSend it?`,
+      text: `Here's a reminder for ${row.client}. It goes out as a PayPal invoice for ${money(row.amount, row.currency)}, with the link to their portal.`,
       steps: [{ tool: "send_payment_reminder", source: "sealed", summary: "preview" }],
-      pending: { kind: "remind", projectId: row.projectId, milestoneId: row.milestoneId, message: msg },
+      pending: { kind: "remind", projectId: row.projectId, milestoneId: row.milestoneId, message: msg, to: `${row.client}${row.clientEmail ? ` · ${row.clientEmail}` : ""}`, amount: money(row.amount, row.currency), title: row.milestone },
     };
   }
 
   return {
-    text: 'I can tell you who owes you money, remind a client, or refund a milestone. Try "who owes me?"',
+    text: "I can tell you who owes you money, what PayPal is holding, what you collected this month, or send a client a payment reminder. Try one of the suggestions below.",
     steps: [],
   };
 }
