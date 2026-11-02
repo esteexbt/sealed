@@ -1,12 +1,12 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { ScopePlan } from "@/lib/types";
 
 const SAMPLE = `hey!! saw your work on behance, love it. I'm opening a coffee shop in Yaba called Bean There and I need a logo + full brand kit (colours, fonts, menu template, IG templates). we launch in 3 weeks so kinda urgent lol. budget is tight, around $1,200. my email is tolu@beanthere.ng`;
 
-export function NewProject({ modelLabel }: { modelLabel: string }) {
+export function NewProject() {
   const router = useRouter();
   const [brief, setBrief] = useState("");
   const [rate, setRate] = useState("");
@@ -19,6 +19,20 @@ export function NewProject({ modelLabel }: { modelLabel: string }) {
   const [link, setLink] = useState("");
   const [drag, setDrag] = useState(false);
   const fileIn = useRef<HTMLInputElement>(null);
+  const briefEl = useRef<HTMLTextAreaElement>(null);
+  // The brief box starts small and grows with what's in it (up to a limit, then it scrolls).
+  useEffect(() => {
+    const fit = () => {
+      const t = briefEl.current;
+      if (!t) return;
+      t.style.height = "auto";
+      t.style.height = `${Math.min(t.scrollHeight + 2, 520)}px`;
+    };
+    fit();
+    const ro = new ResizeObserver(fit); // re-fit when the column changes width (e.g. after planning)
+    if (briefEl.current) ro.observe(briefEl.current.parentElement!);
+    return () => ro.disconnect();
+  }, [brief, plan]);
 
   /** Pulls text out of a file or link, so the freelancer can check it before planning. */
   async function importBrief(input: File | string) {
@@ -105,7 +119,7 @@ export function NewProject({ modelLabel }: { modelLabel: string }) {
               if (f) importBrief(f);
             }}
           >
-            <textarea id="brief" className="textarea" value={brief} onChange={(e) => setBrief(e.target.value)} placeholder="Paste the DM, email or call notes here, or drop a PDF, Word file or screenshot" />
+            <textarea id="brief" ref={briefEl} rows={3} className="textarea brief-grow" value={brief} onChange={(e) => setBrief(e.target.value)} placeholder="Paste the DM, email or call notes here, or drop a PDF, Word file or screenshot" />
             {importing && <div className="brief-reading" role="status">Reading the brief…</div>}
             <div className="brief-tools">
               <button type="button" className="brief-tool" onClick={() => fileIn.current?.click()} disabled={importing}>
@@ -160,7 +174,6 @@ export function NewProject({ modelLabel }: { modelLabel: string }) {
             <li><span>3</span>They pay each stage into a PayPal hold</li>
           </ol>
         )}
-        <p className="tiny muted new-model">Planned by {modelLabel}</p>
         {error && !plan && <p className="error small" role="alert">{error}</p>}
       </section>
 

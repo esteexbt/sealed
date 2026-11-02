@@ -1090,3 +1090,6 @@ p { margin: 0; }
 .new-solo .new-head h1 { text-wrap: balance; max-width: 18ch; }
 .new-solo .new-head p { text-wrap: balance; }
 .new-steps li { grid-template-columns: auto 1fr; align-items: start; gap: 10px; }
+
+/* Brief box starts compact and grows with its content */
+.brief-box .textarea.brief-grow, .new-solo .brief-box .textarea.brief-grow { min-height: 110px; max-height: 520px; resize: none; overflow-y: auto; }
