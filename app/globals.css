@@ -1080,3 +1080,17 @@ p { margin: 0; }
 .win-held strong { color: var(--warn); }
 .win-held .win-ic { background: var(--held); color: var(--night); }
 @media (max-width: 560px) { .win { font-size: 0.88rem; } .win strong { font-size: 1.1rem; } }
+
+/* ------------------------------ freelancer chip (client portal) ------------------------------ */
+.fc { display: inline-flex; align-items: center; gap: 14px; padding: 8px 18px 8px 8px; border-radius: 999px; background: var(--sheet); box-shadow: 0 0 0 1px var(--rule), 0 6px 18px -12px rgba(18, 23, 46, .35); color: var(--ink); text-decoration: none; max-width: 100%; justify-self: start; }
+.fc-link:hover { box-shadow: 0 0 0 1px var(--seal-light), 0 8px 22px -12px rgba(76, 68, 224, .5); }
+.fc-avatar { width: 52px; height: 52px; border-radius: 999px; flex: none; overflow: hidden; display: grid; place-items: center; background: var(--night); color: #fff; font-weight: 700; font-size: 1.05rem; box-shadow: 0 0 0 2px var(--sheet), 0 0 0 4px var(--seal-soft); }
+.fc-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.fc-text { display: grid; gap: 2px; min-width: 0; }
+.fc-name { font-weight: 700; font-size: 1.12rem; letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fc-meta { display: flex; align-items: center; gap: 10px; font-size: 0.85rem; color: var(--muted); min-width: 0; }
+.fc-headline { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fc-rating { display: inline-flex; align-items: center; gap: 4px; flex: none; }
+.fc-rating strong { color: var(--ink); }
+.fc-view { margin-left: 6px; font-size: 0.85rem; font-weight: 600; color: var(--seal); flex: none; padding-left: 14px; border-left: 1px solid var(--rule); }
+@media (max-width: 560px) { .fc-view { display: none; } .fc-avatar { width: 46px; height: 46px; } .fc-name { font-size: 1.02rem; } }

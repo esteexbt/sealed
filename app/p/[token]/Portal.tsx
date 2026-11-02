@@ -50,6 +50,7 @@ export interface PortalMilestone {
 interface Props {
   token: string;
   freelancerHandle: string | null;
+  freelancerCard: { avatar: string | null; headline: string; rating: number | null; reviews: number };
   review: { rating: number; comment: string } | null;
   canReview: boolean;
   title: string;
@@ -114,10 +115,7 @@ export function Portal(props: Props) {
           currency={currency}
         />
         <div className="head-main">
-          <p className="portal-from">
-            <Seal size={22} label="Protected by Sealed" />
-            {props.freelancer}
-          </p>
+          <FreelancerChip name={props.freelancer} handle={props.freelancerHandle} {...props.freelancerCard} />
           <h1>{props.title}</h1>
           <p className="lede muted">
             Hi {props.clientName}. When a stage is ready, you pay into a PayPal hold and review the full work. {props.freelancer} only receives the money when you approve it.
@@ -558,5 +556,39 @@ function RateCard({ token, freelancer, handle, initial }: { token: string; freel
         <button className="btn btn-seal" disabled={busy || !rating}>{busy ? "Saving…" : initial ? "Update rating" : "Submit rating"}</button>
       </div>
     </form>
+  );
+}
+
+const initialsOf = (n: string) => n.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]!.toUpperCase()).join("") || "?";
+
+/** Who the client is paying: photo, name, headline and verified rating, linking to their public profile. */
+function FreelancerChip({ name, handle, avatar, headline, rating, reviews }: { name: string; handle: string | null; avatar: string | null; headline: string; rating: number | null; reviews: number }) {
+  const body = (
+    <>
+      <span className="fc-avatar" aria-hidden>
+        {avatar ? <img src={avatar} alt="" /> : <span>{initialsOf(name)}</span>}
+      </span>
+      <span className="fc-text">
+        <span className="fc-name">{name}</span>
+        <span className="fc-meta">
+          {headline && <span className="fc-headline">{headline}</span>}
+          {rating !== null && (
+            <span className="fc-rating">
+              <svg width="13" height="13" viewBox="0 0 24 24" aria-hidden><path fill="#F5B72A" d="M12 3.2l2.7 5.6 6.1.8-4.5 4.3 1.1 6.1L12 17l-5.4 3 1.1-6.1-4.5-4.3 6.1-.8L12 3.2Z" /></svg>
+              <strong>{rating.toFixed(1)}</strong>
+              <span>({reviews})</span>
+            </span>
+          )}
+        </span>
+      </span>
+      {handle && <span className="fc-view">View profile</span>}
+    </>
+  );
+  return handle ? (
+    <a href={`/u/${handle}`} target="_blank" rel="noopener" className="fc fc-link" aria-label={`${name}, view profile`}>
+      {body}
+    </a>
+  ) : (
+    <div className="fc">{body}</div>
   );
 }

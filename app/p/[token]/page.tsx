@@ -9,6 +9,7 @@ import { Portal, type PortalMilestone } from "./Portal";
 import { clientNotices, unread } from "@/lib/notify";
 import { money } from "@/lib/actions";
 import { ownerName, ownerOf } from "@/lib/auth";
+import { profileStats } from "@/lib/profile";
 
 export const dynamic = "force-dynamic";
 
@@ -64,8 +65,18 @@ export default async function PortalPage({ params }: { params: Promise<{ token: 
     };
   });
 
+  const owner = ownerOf(p);
+  const ownerStats = owner?.handle ? profileStats(owner.id) : null;
+  const freelancerCard = {
+    avatar: owner?.handle && owner.avatarKey ? `/api/u/${owner.handle}/image/avatar?v=${owner.imageVersion || 0}` : null,
+    headline: owner?.headline || "",
+    rating: ownerStats?.rating ?? null,
+    reviews: ownerStats?.reviews.length ?? 0,
+  };
+
   return (
     <Portal
+      freelancerCard={freelancerCard}
       token={token}
       title={p.title}
       clientName={p.clientName}
