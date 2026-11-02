@@ -1060,9 +1060,9 @@ p { margin: 0; }
 
 /* Dial number: a narrow, tall figure with clear space inside the ring. */
 .dial-num { padding: 26px; }
-.dial-num strong { font-family: var(--sans); font-stretch: normal; font-weight: 700; font-size: 1.75rem; letter-spacing: -0.03em; line-height: 1; }
+.dial-num strong { font-family: var(--serif); font-weight: 400; font-size: 1.85rem; letter-spacing: -0.06em; line-height: 1; }
 .dial-num span { margin-top: 6px; font-size: 0.72rem; }
-@media (max-width: 760px) { .dial-num { padding: 18px; } .dial-num strong { font-size: 1.35rem; } .dial-num span { font-size: 0.66rem; margin-top: 4px; } }
+@media (max-width: 760px) { .dial-num { padding: 18px; } .dial-num strong { font-size: 1.3rem; } .dial-num span { font-size: 0.66rem; margin-top: 4px; } }
 
 /* Freelancer chip, a touch smaller */
 .fc { gap: 11px; padding: 6px 14px 6px 6px; }
