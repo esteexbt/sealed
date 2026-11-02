@@ -1,7 +1,6 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { FoldAnimation } from "@/components/FoldAnimation";
 import { useRouter } from "next/navigation";
 import type { ScopePlan } from "@/lib/types";
 
@@ -84,10 +83,12 @@ export function NewProject({ modelLabel }: { modelLabel: string }) {
   const fmt = (n: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: plan?.currency || "USD", maximumFractionDigits: 0 }).format(n);
 
   return (
-    <div className="new">
+    <div className={`new${plan ? "" : " new-solo"}`}>
       <section className="new-brief">
-        <h1>What did the client send you?</h1>
-        <p className="muted">Paste it, upload it, or link to it, as it is. Sealed turns it into paid stages.</p>
+        <header className="new-head">
+          <h1>What did the client send you?</h1>
+          <p className="muted">Paste it, upload it, or link to it, as it is. Sealed turns it into paid stages.</p>
+        </header>
         <div className="field">
           <label htmlFor="brief">Client brief</label>
           <div
@@ -143,20 +144,25 @@ export function NewProject({ modelLabel }: { modelLabel: string }) {
             </p>
           )}
         </div>
-        <div className="field" style={{ maxWidth: 320 }}>
-          <label htmlFor="rate">Your usual rate (optional)</label>
-          <input id="rate" className="input" value={rate} onChange={(e) => setRate(e.target.value)} placeholder="e.g. $45/hour or $1,500 per brand kit" />
-        </div>
-        <div className="row">
-          <button className="btn btn-ink" onClick={makePlan} disabled={busy !== null || brief.trim().length < 15}>
+        <div className="new-go">
+          <div className="field">
+            <label htmlFor="rate">Your usual rate <span className="muted">(optional)</span></label>
+            <input id="rate" className="input" value={rate} onChange={(e) => setRate(e.target.value)} placeholder="e.g. $45/hour or $1,500 per brand kit" />
+          </div>
+          <button className="btn btn-seal new-plan-btn" onClick={makePlan} disabled={busy !== null || brief.trim().length < 15}>
             {busy === "plan" ? "Planning…" : plan ? "Plan again" : "Plan the payments"}
           </button>
-          <span className="tiny muted">Planned by {modelLabel}</span>
         </div>
+        {!plan && (
+          <ol className="new-steps">
+            <li><span>1</span>Sealed splits the brief into priced, dated stages</li>
+            <li><span>2</span>You check them and send the client a link</li>
+            <li><span>3</span>They pay each stage into a PayPal hold</li>
+          </ol>
+        )}
+        <p className="tiny muted new-model">Planned by {modelLabel}</p>
         {error && !plan && <p className="error small" role="alert">{error}</p>}
       </section>
-
-      {!plan && <FoldAnimation busy={busy === "plan"} />}
 
       {plan && (
         <section className="plan sheet" aria-labelledby="plan-h">
