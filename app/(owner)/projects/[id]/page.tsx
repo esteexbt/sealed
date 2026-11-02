@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { pageUser } from "@/lib/auth";
 import { currentFiles, getProject, held, isOverdue, projectSlug } from "@/lib/db";
 import { money, portalUrl, refreshPayouts, settleDue } from "@/lib/actions";
-import { PayoutLine } from "@/components/PayoutLine";
+import { PaidReceipt } from "@/components/PaidReceipt";
 import { isStale, refreshInBackground } from "@/lib/check";
 import { statusLabel, when } from "@/lib/format";
 import { ensurePreviews } from "@/lib/files";
@@ -188,24 +188,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
                 {files.length > 0 && editable && !stale && (
                   <MilestoneAction projectId={p.id} milestoneId={m.id} action="check" label="Check again" busyLabel="Checking…" tone="quiet" />
                 )}
-                {m.status === "paid" && m.payment && (
-                  <div className="paid-line">
-                    <span className="paid-check" aria-hidden>
-                      <svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M4.5 10.5l3.6 3.5 7.4-8" /></svg>
-                    </span>
-                    <div className="paid-text">
-                      <strong>
-                        {m.payment.releasedBy === "auto" ? "Released automatically" : m.payment.authorizationId ? "Approved and released" : "Paid"}
-                        {m.payment.capturedAt ? ` ${date(m.payment.capturedAt.slice(0, 10))}` : ""} via PayPal
-                      </strong>
-                      <span className="tiny muted">PayPal capture {m.payment.captureId}</span>
-                      {m.payment.captureStatus === "PENDING" && (
-                        <span className="tiny" style={{ color: "var(--warn)" }}>PayPal is still clearing this payment. It reaches your balance once cleared.</span>
-                      )}
-                    </div>
-                    {m.payment.payout && <PayoutLine payout={m.payment.payout} currency={m.payment.currency} />}
-                  </div>
-                )}
+                {m.status === "paid" && m.payment && <PaidReceipt payment={m.payment} client={p.clientName} />}
                 {m.reminders.length > 0 && m.status === "awaiting_payment" && (
                   <span className="tiny muted">
                     {m.reminders.length} reminder{m.reminders.length === 1 ? "" : "s"} sent, last {date(m.reminders.at(-1)!.sentAt.slice(0, 10))}

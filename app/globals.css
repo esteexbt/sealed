@@ -1220,7 +1220,7 @@ p { margin: 0; }
 
 /* ------------------------------ payouts ------------------------------ */
 .paid-line { flex-wrap: wrap; }
-.payout { flex-basis: 100%; margin: 6px 0 0 34px; font-size: 0.84rem; display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; }
+.payout { margin: 0; font-size: 0.86rem; display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; }
 .payout-sent { color: var(--paid); }
 .payout-pending { color: var(--ink-2); }
 .payout-wait { color: var(--warn); }
@@ -1244,3 +1244,35 @@ p { margin: 0; }
 .pp-edit-btn:hover { background: var(--seal-soft); box-shadow: none; }
 .pp-edit { display: flex; gap: 8px; }
 .pp-edit .input { flex: 1; min-width: 0; }
+
+/* ------------------------------ paid stage + receipt ------------------------------ */
+.pr-paid { flex-basis: 100%; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 12px 12px 12px 14px; border-radius: 14px; background: #E3F3EC; }
+.pr-paid .paid-check { margin: 0; width: 30px; height: 30px; }
+.pr-paid-text { display: grid; gap: 2px; min-width: 0; }
+.pr-paid-head { margin: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+.pr-paid-head strong { color: var(--paid); font-size: 1rem; }
+.pr-paid-head span { font-size: 0.84rem; color: var(--ink-2); }
+.pr-paid .payout-sent { color: var(--ink-2); }
+.pr-paid .payout b { color: var(--ink); }
+.pr-paid-btn { appearance: none; border: 0; cursor: pointer; font: inherit; font-size: 0.85rem; font-weight: 650; display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; border-radius: 9px; background: var(--sheet); color: var(--paid); }
+.pr-paid-btn:hover { box-shadow: inset 0 0 0 1px var(--paid); }
+@media (max-width: 560px) { .pr-paid { grid-template-columns: auto minmax(0, 1fr); } .pr-paid-btn { grid-column: 1 / -1; justify-content: center; } }
+
+.rc { width: min(440px, 100%); display: grid; gap: 16px; }
+.rc:focus { outline: none; }
+.rc-rows { margin: 0; display: grid; border-top: 1px solid var(--rule); }
+.rc-rows > div { display: flex; justify-content: space-between; gap: 16px; padding: 11px 0; border-bottom: 1px solid var(--rule); font-size: 0.92rem; }
+.rc-rows dt { color: var(--ink-2); }
+.rc-rows dd { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; }
+.rc-wrap { overflow-wrap: anywhere; font-weight: 500 !important; }
+.rc-total dt { color: var(--ink); font-weight: 650; }
+.rc-total dd { color: var(--paid); font-size: 1.05rem; }
+.rc-ids { display: grid; gap: 8px; padding: 12px 14px; border-radius: 12px; background: var(--paper); }
+.rc-ids p { margin: 0; }
+.rc-ids > div { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.rc-id { appearance: none; border: 0; background: var(--sheet); cursor: pointer; display: inline-flex; align-items: center; gap: 8px; padding: 5px 6px 5px 10px; border-radius: 8px; box-shadow: inset 0 0 0 1px var(--rule); max-width: 70%; }
+.rc-id code { font-size: 0.8rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rc-id span { font: inherit; font-size: 0.75rem; font-weight: 650; color: var(--seal); padding: 2px 6px; border-radius: 6px; background: var(--seal-soft); }
+
+.pr-paid .payout { display: block; line-height: 1.45; }
+.pr-paid .payout b { margin-right: 4px; }
