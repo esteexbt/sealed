@@ -1094,3 +1094,9 @@ p { margin: 0; }
 .fc-rating strong { color: var(--ink); }
 .fc-view { margin-left: 6px; font-size: 0.85rem; font-weight: 600; color: var(--seal); flex: none; padding-left: 14px; border-left: 1px solid var(--rule); }
 @media (max-width: 560px) { .fc-view { display: none; } .fc-avatar { width: 46px; height: 46px; } .fc-name { font-size: 1.02rem; } }
+
+/* profile photo in the header, menu and tab bar */
+.avatar.has-photo, .tab-avatar.has-photo { overflow: hidden; padding: 0; background: var(--rule); }
+.avatar.has-photo img, .tab-avatar.has-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.avatar-link:hover .avatar.has-photo { box-shadow: 0 0 0 2px var(--seal); background: var(--rule); }
+.tab[aria-current="page"] .tab-avatar.has-photo, .acct-open .tab-avatar.has-photo { box-shadow: 0 0 0 2px var(--seal); background: var(--rule); }

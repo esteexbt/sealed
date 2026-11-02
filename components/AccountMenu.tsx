@@ -8,7 +8,8 @@ import { useEffect, useRef, useState } from "react";
  * The avatar's menu: who you're signed in as, your account, and log out.
  * `variant="tab"` is the Profile tab in the phone tab bar; the menu opens upwards.
  */
-export function AccountMenu({ name, email, initials, status, variant = "top" }: { name: string; email: string; initials: string; status: string; variant?: "top" | "tab" }) {
+export function AccountMenu({ name, email, initials, avatar, status, variant = "top" }: { name: string; email: string; initials: string; avatar?: string | null; status: string; variant?: "top" | "tab" }) {
+  const face = avatar ? <img src={avatar} alt="" /> : initials;
   const [open, setOpen] = useState(false);
   const [leaving, setLeaving] = useState(false);
   const wrap = useRef<HTMLDivElement>(null);
@@ -37,18 +38,18 @@ export function AccountMenu({ name, email, initials, status, variant = "top" }: 
     <div ref={wrap} className={`acct acct-${variant}${open ? " acct-open" : ""}`}>
       {variant === "top" ? (
         <button type="button" className="avatar-link" aria-haspopup="menu" aria-expanded={open} aria-label={`Account menu for ${name}`} onClick={() => setOpen((o) => !o)}>
-          <span className="avatar" aria-hidden>{initials}</span>
+          <span className={`avatar${avatar ? " has-photo" : ""}`} aria-hidden>{face}</span>
         </button>
       ) : (
         <button type="button" className="tab" aria-haspopup="menu" aria-expanded={open} aria-current={path.startsWith("/profile") ? "page" : undefined} onClick={() => setOpen((o) => !o)}>
-          <span className="tab-avatar" aria-hidden>{initials}</span>
+          <span className={`tab-avatar${avatar ? " has-photo" : ""}`} aria-hidden>{face}</span>
           <span>Profile</span>
         </button>
       )}
       {open && (
         <div className="acct-menu" role="menu">
           <div className="acct-who">
-            <span className="avatar" aria-hidden>{initials}</span>
+            <span className={`avatar${avatar ? " has-photo" : ""}`} aria-hidden>{face}</span>
             <div>
               <strong>{name}</strong>
               <span className="tiny muted">{email}</span>

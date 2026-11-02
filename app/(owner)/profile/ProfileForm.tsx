@@ -1,5 +1,7 @@
 "use client";
 
+import { useRouter } from "next/navigation";
+
 import { useRef, useState } from "react";
 import { useDialog } from "@/components/Dialog";
 import { ShareProfile } from "@/components/ShareProfile";
@@ -43,6 +45,7 @@ export function ProfileForm({
   baseUrl: string;
   socials: { kind: SocialKind; label: string; placeholder: string }[];
 }) {
+  const router = useRouter();
   const dialog = useDialog();
   const [user, setUser] = useState(initial);
   const [name, setName] = useState(initial.name);
@@ -89,6 +92,7 @@ export function ProfileForm({
     setBusy("");
     if (!res.ok) return setError(json.error || "That image didn’t upload.");
     setUser((u) => ({ ...u, avatar: json.user.avatar, banner: json.user.banner }));
+    router.refresh(); // so the photo shows in the header and tab bar straight away
     dialog.notify(kind === "avatar" ? "Profile photo updated." : "Banner updated.");
   }
   async function removeImage(kind: "avatar" | "banner") {
@@ -96,7 +100,10 @@ export function ProfileForm({
     const res = await fetch(`/api/profile/image?kind=${kind}`, { method: "DELETE" });
     const json = await res.json().catch(() => ({}));
     setBusy("");
-    if (res.ok) setUser((u) => ({ ...u, avatar: json.user.avatar, banner: json.user.banner }));
+    if (res.ok) {
+      setUser((u) => ({ ...u, avatar: json.user.avatar, banner: json.user.banner }));
+      router.refresh();
+    }
   }
 
   const profileUrl = `${baseUrl}${user.handle}`;

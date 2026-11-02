@@ -14,6 +14,7 @@ export default async function OwnerLayout({ children }: { children: React.ReactN
   const user = await pageUser();
   // Shown quietly in the account menu: whether payments are real sandbox ones and the AI is live.
   const status = `${paypalMode === "sandbox" ? "PayPal sandbox" : "PayPal simulation"} · ${aiMode === "offline" ? "offline AI" : "live AI"}`;
+  const avatar = user.handle && user.avatarKey ? `/api/u/${user.handle}/image/avatar?v=${user.imageVersion || 0}` : null;
   return (
     <DialogProvider>
       <header className="topbar">
@@ -23,11 +24,11 @@ export default async function OwnerLayout({ children }: { children: React.ReactN
         <Nav />
         <div className="topbar-end">
           <Link href="/new" className="btn btn-ink topbar-new">New project</Link>
-          <AccountMenu name={user.name} email={user.email} initials={initials(user.name)} status={status} />
+          <AccountMenu name={user.name} email={user.email} initials={initials(user.name)} avatar={avatar} status={status} />
         </div>
       </header>
       <main className="page">{children}</main>
-      <BottomNav account={<AccountMenu variant="tab" name={user.name} email={user.email} initials={initials(user.name)} status={status} />} />
+      <BottomNav account={<AccountMenu variant="tab" name={user.name} email={user.email} initials={initials(user.name)} avatar={avatar} status={status} />} />
     </DialogProvider>
   );
 }
