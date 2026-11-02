@@ -170,7 +170,7 @@ export function LedgerGrid({ rows }: { rows: LedgerRow[] }) {
       },
       {
         field: "status",
-        width: 172,
+        width: 152,
         filter: true,
         cellStyle: { display: "flex", alignItems: "center" },
         cellRenderer: (p: ICellRendererParams<Row, string>) =>
@@ -191,18 +191,18 @@ export function LedgerGrid({ rows }: { rows: LedgerRow[] }) {
         colId: "late",
         headerName: "Late",
         headerTooltip: "Days past the due date",
-        width: 76,
+        width: 64,
         type: "rightAligned",
         valueGetter: (p) => daysLate(p.data),
         valueFormatter: (p) => (p.value ? `${p.value}d` : ""),
         cellClassRules: { "cell-late": (p) => (p.value || 0) > 0 },
       },
       { field: "paidOn", headerName: "Paid on", width: 96, valueFormatter: shortDate },
-      { field: "captureId", headerName: "PayPal capture", width: 134, tooltipField: "captureId" },
+      { field: "captureId", headerName: "PayPal ID", width: 118, tooltipField: "captureId" },
       {
         colId: "action",
         headerName: "",
-        width: 104,
+        width: 126,
         sortable: false,
         resizable: false,
         cellStyle: { display: "flex", alignItems: "center" },
@@ -211,7 +211,13 @@ export function LedgerGrid({ rows }: { rows: LedgerRow[] }) {
             <button
               type="button"
               className="grid-btn"
-              title={p.data.clientEmail ? `Send ${p.data.client} a PayPal invoice reminder` : "Add a client email first"}
+              title={
+                !p.data.clientEmail
+                  ? "Add a client email first"
+                  : p.data.reminders
+                    ? `Reminded ${p.data.reminders} time${p.data.reminders === 1 ? "" : "s"} already. Send ${p.data.client} another PayPal invoice reminder`
+                    : `Send ${p.data.client} a PayPal invoice reminder`
+              }
               disabled={!p.data.clientEmail}
               onClick={(e) => {
                 const btn = e.currentTarget;
@@ -219,11 +225,11 @@ export function LedgerGrid({ rows }: { rows: LedgerRow[] }) {
                 btn.textContent = "Sending…";
                 remind(p.data!, p.node).finally(() => {
                   btn.disabled = false;
-                  btn.textContent = "Remind";
+                  btn.textContent = "Remind again";
                 });
               }}
             >
-              Remind{p.data.reminders ? ` (${p.data.reminders})` : ""}
+              {p.data.reminders ? "Remind again" : "Remind"}
             </button>
           ) : null,
       },
