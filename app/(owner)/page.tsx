@@ -51,10 +51,24 @@ export default async function Dashboard() {
             </span>
           )}
         </h1>
-        <p className="muted">
-          {money(paid, currency)} collected so far across {projects.length} project{projects.length === 1 ? "" : "s"}.
-          {holding > 0 && <> {money(holding, currency)} more is held by PayPal while clients review your work.</>}
-        </p>
+        <div className="dash-wins">
+          {paid > 0 && (
+            <span className="win win-paid">
+              <span className="win-ic" aria-hidden>
+                <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4.5 10.5l3.6 3.5 7.4-8" /></svg>
+              </span>
+              <span><strong>{money(paid, currency)}</strong> banked so far, from {projects.length} project{projects.length === 1 ? "" : "s"}</span>
+            </span>
+          )}
+          {holding > 0 && (
+            <span className="win win-held">
+              <span className="win-ic" aria-hidden>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="11" width="14" height="9" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg>
+              </span>
+              <span><strong>{money(holding, currency)}</strong> locked in with PayPal, waiting on review</span>
+            </span>
+          )}
+        </div>
         {overdue > 0 && (
           <Link href="/assistant?q=Who%20owes%20me%20money%3F" className="btn btn-ghost">Chase overdue payments</Link>
         )}

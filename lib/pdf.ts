@@ -71,3 +71,30 @@ export async function renderPdfPage(buf: Buffer, page: number, cacheKey?: string
 }
 
 export const MAX_REVIEW_PAGES = MAX_PAGES;
+
+/** The text of a PDF, page by page (for briefs). Scanned PDFs have no text and return "". */
+export async function pdfText(buf: Buffer, maxPages = 20): Promise<{ text: string; pages: number }> {
+  const doc = await open(buf);
+  try {
+    const out: string[] = [];
+    for (let i = 1; i <= Math.min(doc.numPages, maxPages); i++) {
+      const page = await doc.getPage(i);
+      const tc = await page.getTextContent();
+      let line = "";
+      const lines: string[] = [];
+      for (const it of tc.items as { str?: string; hasEOL?: boolean }[]) {
+        line += it.str || "";
+        if (it.hasEOL) {
+          lines.push(line);
+          line = "";
+        }
+      }
+      if (line) lines.push(line);
+      out.push(lines.join("\n"));
+      page.cleanup();
+    }
+    return { text: out.join("\n\n").replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim(), pages: doc.numPages };
+  } finally {
+    await doc.destroy();
+  }
+}

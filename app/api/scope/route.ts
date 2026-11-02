@@ -10,7 +10,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Paste the client's brief or message first. A sentence or two is enough." }, { status: 400 });
   }
   try {
-    const plan = await scopeBrief(brief.slice(0, 6000), rate);
+    const plan = await scopeBrief(brief.slice(0, 12000), rate);
     return NextResponse.json({ plan });
   } catch (e) {
     console.error(e);

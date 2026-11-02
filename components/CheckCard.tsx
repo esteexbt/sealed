@@ -20,8 +20,8 @@ function tally(check: DeliveryCheck) {
 }
 function countLine(check: DeliveryCheck) {
   const t = tally(check);
-  if (!t.issues) return plural(t.met, "check") + " passed";
-  return [t.missing && `${t.missing} missing`, t.partial && `${plural(t.partial, "thing")} to check`].filter(Boolean).join(", ");
+  if (!t.issues) return `${t.met} of ${t.met} delivered`;
+  return `${t.issues} not delivered · ${t.met} delivered`;
 }
 
 export function InfoIcon({ size = 18 }: { size?: number }) {
@@ -104,9 +104,9 @@ function CheckDialog({ check, audience, onClose }: { check: DeliveryCheck; audie
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [onClose]);
-  // Problems first, then what passed.
-  const order = { missing: 0, partial: 1, info: 2, met: 3 } as const;
-  const items = [...check.items].sort((a, b) => order[a.status] - order[b.status]);
+  // Two groups only: what isn't there (or isn't right yet), and what is.
+  const bad = check.items.filter((i) => i.status === "missing" || i.status === "partial");
+  const good = check.items.filter((i) => i.status === "met");
 
   return (
     <div className="dlg-backdrop" onClick={onClose}>
@@ -125,19 +125,38 @@ function CheckDialog({ check, audience, onClose }: { check: DeliveryCheck; audie
             ×
           </button>
         </div>
-        <ul className="nt-list check-items">
-          {items.map((i, k) => (
-            <li key={k} className={`ci ci-${i.status}`}>
-              <span className="ci-mark" aria-label={i.status}>
-                {MARK[i.status]}
-              </span>
-              <span>
-                <strong>{i.label}</strong>
-                <span className="ci-note">{i.note}</span>
-              </span>
-            </li>
-          ))}
-        </ul>
+        <div className="nt-list cd-groups">
+          {bad.length > 0 && (
+            <section>
+              <h3 className="cd-h cd-h-bad">Not delivered <span>{bad.length}</span></h3>
+              <ul className="cd-list">
+                {bad.map((i, k) => (
+                  <li key={k} className="cd-item">
+                    <span className="cd-mark cd-mark-bad" aria-label="Not delivered">
+                      <svg viewBox="0 0 20 20" width="11" height="11" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" aria-hidden><path d="M5.5 5.5l9 9M14.5 5.5l-9 9" /></svg>
+                    </span>
+                    <span className="cd-text"><strong>{i.label}</strong><span>{i.note}</span></span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+          {good.length > 0 && (
+            <section>
+              <h3 className="cd-h cd-h-good">Delivered <span>{good.length}</span></h3>
+              <ul className="cd-list">
+                {good.map((i, k) => (
+                  <li key={k} className="cd-item">
+                    <span className="cd-mark cd-mark-good" aria-label="Delivered">
+                      <svg viewBox="0 0 20 20" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M4.5 10.5l3.6 3.5 7.4-8" /></svg>
+                    </span>
+                    <span className="cd-text"><strong>{i.label}</strong><span>{i.note}</span></span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+        </div>
         <p className="tiny muted check-foot">
           {check.by === "ai-vision"
             ? "Checked by Sealed with AI, looking at the files against the agreed deliverables."
