@@ -11,6 +11,7 @@ import type { Notice } from "@/lib/notify";
 import { LiveRefresh, MilestoneBell } from "@/components/MilestoneBell";
 import { ProjectDial } from "@/components/ProjectDial";
 import { DownloadIcon, EyeIcon, FileDialog, fileType } from "@/components/FileDialog";
+import { ClientReceipt, type ClientReceiptData } from "@/components/ClientReceipt";
 
 export interface PortalFile {
   id: string;
@@ -37,6 +38,7 @@ export interface PortalMilestone {
   status: MilestoneStatus;
   reviewEndsAt: string | null;
   releasedBy: "client" | "auto" | null;
+  receipt: ClientReceiptData | null;
   reviseBy: string | null;
   openRequest: { at: string; note: string } | null;
   rounds: number;
@@ -367,6 +369,7 @@ function MilestoneBlock({
         {(m.status === "paid" || opening) && (
           <div className="pm-unlocked">
             <span className="status status-paid">Unlocked</span>
+            {m.status === "paid" && m.receipt && <ClientReceipt data={m.receipt} stage={m.title} freelancer={freelancer} />}
             {m.status === "paid" && m.files.length > 1 && (
               <a className="btn btn-seal" href={`/api/download?t=${token}&m=${m.id}`} download>
                 <DownloadIcon /> Download all {m.files.length} files

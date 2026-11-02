@@ -42,6 +42,21 @@ export default async function PortalPage({ params }: { params: Promise<{ token: 
       status: m.status,
       reviewEndsAt: m.payment?.reviewEndsAt || null,
       releasedBy: m.payment?.releasedBy || null,
+      // The client's own record of what they paid. Nothing about the freelancer's fees or payout.
+      receipt:
+        m.payment && (m.payment.capturedAt || m.payment.authorizedAt)
+          ? {
+              amount: m.payment.amount,
+              currency: m.payment.currency,
+              heldAt: m.payment.authorizedAt || null,
+              releasedAt: m.payment.capturedAt || null,
+              releasedBy: m.payment.releasedBy || null,
+              paidWith: m.payment.payerEmail || null,
+              transaction: m.payment.captureId || m.payment.authorizationId || null,
+              refunded: m.status === "refunded",
+              voided: Boolean(m.payment.voidedAt),
+            }
+          : null,
       reviseBy: m.reviseBy || null,
       openRequest: openRequest ? { at: openRequest.at, note: openRequest.note } : null,
       rounds: (m.changeRequests || []).length,
