@@ -4,7 +4,7 @@
 
 Sealed is an AI agent for freelancers. Paste a client's brief and it returns a priced milestone plan. Deliverables are shown to the client as sealed, watermarked previews. When the client pays a milestone with PayPal, the seal breaks and the full files unlock. An assistant built on the PayPal Agent Toolkit chases late payments for you, and asks before it sends anything.
 
-Built for the [PayPal AI Hackathon](https://paypalaihackathon.devpost.com/).
+Built for the [PayPal AI Hackathon](https://paypalaihackathon.devpost.com/). [Watch the demo (2:36)](https://youtu.be/mc9wJs3TSCE) · [Try it live](https://sealedhq-48e9.onrender.com)
 
 ## The problem
 
@@ -96,7 +96,8 @@ Render's free plan wipes the disk on every restart, so Sealed keeps an off-serve
 
 ## Testing notes for judges
 
-- Live demo: _added at submission_
+- Live demo: https://sealedhq-48e9.onrender.com
+- Demo video: https://youtu.be/mc9wJs3TSCE
 - Sign in: press **Try the demo** on the sign-in page, or create your own account with any email.
 - PayPal sandbox buyer: _added at submission_
 
