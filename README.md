@@ -99,7 +99,10 @@ Render's free plan wipes the disk on every restart, so Sealed keeps an off-serve
 - Live demo: https://sealedhq-48e9.onrender.com
 - Demo video: https://youtu.be/mc9wJs3TSCE
 - Sign in: press **Try the demo** on the sign-in page, or create your own account with any email.
-- PayPal sandbox buyer: _added at submission_
+- PayPal sandbox buyer (the client): `client@sealed.com` / `client@sealed.com`. This is a PayPal **sandbox** test account with play money; use it when you press **Pay with PayPal**.
+- Payouts: the demo freelancer's PayPal email is the sandbox account `freelancer@sealed.com`, so approving a stage sends a real sandbox Payout to it.
+
+Walkthrough: sign in with **Try the demo**, press **New project**, paste or attach a brief and press **Plan the payments**, then **Create project**. Press **Open the client's view** and approve the plan. Back on the project, use **Add deliverables** to upload a couple of images (the AI check runs on its own). In the client's view press **Pay with PayPal** and log in with the sandbox buyer above; the stage then shows the money held by PayPal. Press **Approve and release**: the files unlock, both sides get a receipt, and the freelancer is paid out. Then try the **Ledger** and the **Assistant**.
 
 ## Security model
 

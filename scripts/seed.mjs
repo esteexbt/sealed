@@ -119,7 +119,7 @@ const activity = [
 
 // The demo freelancer. Judges open it from "Try the demo" on the sign-in page; it has no password.
 const demo = {
-  id: rid(), email: "demo@sealed.app", name: "Ada Okafor", passwordHash: null, googleId: null, paypalId: null, paypalEmail: null, demo: true, createdAt: ago(24 * 60),
+  id: rid(), email: "demo@sealed.app", name: "Ada Okafor", passwordHash: null, googleId: null, paypalId: null, paypalEmail: "freelancer@sealed.com", demo: true, createdAt: ago(24 * 60),
   handle: "ada-okafor",
   headline: "Brand identity and motion designer",
   bio: "I help new food, fitness and lifestyle brands look ready on day one: logos, brand systems, launch videos and the social posts that go with them.\n\nEvery project runs in stages. You see the work before you pay for it, and your payment is held by PayPal until you approve.",
