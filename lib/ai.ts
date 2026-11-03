@@ -130,6 +130,7 @@ function offlinePlan(brief: string): ScopePlan {
   const weeks = Number(brief.match(/(\d+)\s*weeks?/i)?.[1] || 4);
   const nameMatch =
     brief.match(/(?:called|named)\s+([A-Z][\w'&]*(?:\s+[A-Z][\w'&]*){0,3})/) ||
+    brief.match(/\b(?:[Ww]e are|[Ww]e're|[Tt]his is|I'm from|I am from|[Hh]ere at)\s+([A-Z][\w'&]*(?:\s+[A-Z][\w'&]*){0,3})/) ||
     brief.match(/(?:startup|company|brand|shop|business|store|restaurant|agency|app)\s+([A-Z][\w'&]*(?:\s+[A-Z][\w'&]*){0,2})/) ||
     brief.match(/(?:for|at)\s+(?:my\s+)?([A-Z][\w'&]*(?:\s+[A-Z][\w'&]*){0,3})/);
   const clientName = nameMatch?.[1] || "Client";
@@ -157,6 +158,18 @@ function offlinePlan(brief: string): ScopePlan {
       { title: "Final animation", description: "Polished, delivery-ready video.", deliverables: ["Final video (MP4)", "Social cutdowns"], amount: 0.4, dueInDays: 0.95 },
     ],
   };
+  // Pick up specific asks from the brief so the plan reads like this client's, not a template.
+  if (kind === "brand") {
+    const words: Record<string, number> = { two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, twelve: 12 };
+    const posts = brief.match(/(\d+|two|three|four|five|six|seven|eight|nine|ten|twelve)\s+(?:instagram|ig|social(?: media)?)\s+(?:launch\s+)?(?:posts?|templates?)/i);
+    const kit = templates.brand[2];
+    if (posts) {
+      const n = Number(posts[1]) || words[posts[1].toLowerCase()] || 6;
+      kit.deliverables = kit.deliverables.filter((d) => d !== "Social templates").concat(`${n} Instagram launch posts`);
+      kit.title = "Brand kit and launch posts";
+    }
+    if (/label|packaging|bottle|pack\b/.test(text)) kit.deliverables.splice(2, 0, "Label design");
+  }
   const total = budget || { brand: 1500, web: 2400, motion: 1800 }[kind]!;
   const days = Math.max(7, weeks * 7);
   const milestones = templates[kind].map((m) => ({
