@@ -494,8 +494,17 @@ p { margin: 0; }
 .nt > * { flex: none; }
 .nt > .nt-list { flex: 0 1 auto; min-height: 0; }
 .nt-head { display: flex; justify-content: space-between; align-items: start; gap: 12px; }
-.nt-x { appearance: none; border: 0; background: transparent; font-size: 1.6rem; line-height: 1; color: var(--muted); cursor: pointer; width: 34px; height: 34px; border-radius: 50%; margin: -6px -8px 0 0; }
-.nt-x:hover { background: var(--paper); color: var(--ink); }
+/* Close button on every pop-up: a clear box with a drawn X (the × glyph is hidden). */
+.nt-x { appearance: none; position: relative; flex: none; display: inline-grid; place-items: center; width: 36px; height: 36px; margin: -4px -4px 0 0; padding: 0;
+  border: 1px solid var(--rule-strong); border-radius: 10px; background: var(--paper); color: var(--ink); font-size: 0; line-height: 0; cursor: pointer;
+  transition: background .15s, border-color .15s, color .15s; }
+.nt-x > * { display: none; }
+.nt-x::before, .nt-x::after { content: ""; position: absolute; left: 50%; top: 50%; width: 15px; height: 2px; border-radius: 2px; background: currentColor; }
+.nt-x::before { transform: translate(-50%, -50%) rotate(45deg); }
+.nt-x::after { transform: translate(-50%, -50%) rotate(-45deg); }
+.nt-x:hover { background: var(--ink); border-color: var(--ink); color: #fff; }
+.nt-x:active { transform: scale(.94); }
+.nt-x:disabled { opacity: .45; cursor: default; }
 .nt-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; overflow-y: auto; overscroll-behavior: contain; align-content: start; }
 .nt-item { display: grid; grid-template-columns: 12px 1fr; gap: 12px; padding: 12px; border-radius: var(--r-s); }
 .nt-new { background: var(--paper); }
@@ -527,7 +536,7 @@ p { margin: 0; }
 .nt-reminder .nt-dot { background: var(--warn); }
 .nt-revision .nt-note { border-left-color: var(--rule-strong); color: var(--ink-2); }
 .pm-head { grid-template-columns: 32px minmax(0, 1fr) auto; align-items: start; }
-.nt-x:focus { outline: none; } .nt-x:focus-visible { outline: 2px solid var(--ink); outline-offset: 1px; }
+.nt-x:focus { outline: none; } .nt-x:focus-visible { outline: 2px solid var(--seal); outline-offset: 2px; }
 
 /* ------------------------------ project dial (client portal) ------------------------------ */
 .has-dial { grid-template-columns: minmax(0, 1fr) auto; column-gap: 40px; align-items: center; }
