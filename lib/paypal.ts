@@ -41,7 +41,11 @@ async function call<T>(path: string, init: RequestInit & { idempotencyKey?: stri
   if (init.idempotencyKey) headers["PayPal-Request-Id"] = init.idempotencyKey;
   const res = await fetch(`${BASE}${path}`, { ...init, headers: { ...headers, ...(init.headers as object) } });
   const text = await res.text();
-  if (!res.ok) throw new PayPalError(`PayPal ${init.method || "GET"} ${path} failed (${res.status})`, text);
+  if (!res.ok) {
+    // Keep PayPal's own explanation (name, message, debug id) in the server logs for troubleshooting.
+    console.error(`[paypal] ${init.method || "GET"} ${path} ${res.status}`, text.slice(0, 2000), res.headers.get("paypal-debug-id") || "");
+    throw new PayPalError(`PayPal ${init.method || "GET"} ${path} failed (${res.status})`, text);
+  }
   return (text ? JSON.parse(text) : {}) as T;
 }
 
@@ -259,6 +263,17 @@ export interface InvoiceInput {
 /** Creates a draft invoice and sends it. Returns the PayPal invoice id. */
 export async function createAndSendInvoice(input: InvoiceInput): Promise<{ invoiceId: string; status: string }> {
   if (paypalMode === "simulation") return { invoiceId: "INV2-SIM-" + id().toUpperCase(), status: "SENT" };
+  try {
+    return await sendInvoice(input);
+  } catch (e) {
+    const status = Number((e as Error).message.match(/\((\d{3})\)/)?.[1]);
+    if (status === 401 || status === 403) throw new PayPalError("PayPal isn't letting Sealed send invoices yet, so the reminder wasn't sent. Try again later.", (e as PayPalError).detail);
+    if (status >= 400 && status < 500) throw new PayPalError("PayPal couldn't create this invoice. Check the client's email address and try again.", (e as PayPalError).detail);
+    throw new PayPalError("PayPal didn't respond, so the reminder wasn't sent. Try again in a moment.", (e as PayPalError).detail);
+  }
+}
+
+async function sendInvoice(input: InvoiceInput): Promise<{ invoiceId: string; status: string }> {
   const draft = await call<{ id?: string; href?: string }>("/v2/invoicing/invoices", {
     method: "POST",
     body: JSON.stringify({
