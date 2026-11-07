@@ -162,9 +162,17 @@ function summarize(name: string, args: unknown, result: unknown): string {
   return "done";
 }
 
+const QUICK = /who owes|outstanding|unpaid|owed|receivable|overdue|held|hold|in review|payouts?|paid out|my paypal|\bplans?\b|signed off|sign-off|collected|earned|this month/;
+
 export async function runAgent(messages: CoreMessage[], u: User): Promise<AgentReply> {
   const m = model();
   if (!m) return offlineAgent(messages, u);
+
+  // Quick look-ups ("who owes me money?", "what's held?", payouts, plans) are answered straight from
+  // Sealed's own data, the same numbers the tools would return, so they come back instantly.
+  const last = messages.at(-1);
+  const ask = typeof last?.content === "string" ? last.content.toLowerCase() : "";
+  if (messages.length === 1 && QUICK.test(ask) && !/remind|refund|send|invoice|why|how|should|draft|write/.test(ask)) return offlineAgent(messages, u);
 
   let result;
   try {
@@ -174,6 +182,8 @@ export async function runAgent(messages: CoreMessage[], u: User): Promise<AgentR
       messages,
       tools: { ...sealedTools(u), ...paypalTools() },
       maxSteps: 8,
+      // Don't keep the user waiting on a slow provider: fall back to the rule-based answer instead.
+      abortSignal: AbortSignal.timeout(20_000),
     });
   } catch (e) {
     // Free-tier quota or provider outage: answer with the rule-based assistant instead of failing.
