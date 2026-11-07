@@ -33,6 +33,8 @@ async function put(name: string, body: Buffer, type: string) {
 let storePending = false;
 export function backupStore(file: string) {
   if (!backupOn || storePending) return;
+  // The restore at startup failed: don't replace the good copy in Supabase with this server's fresh data.
+  if (fs.existsSync(path.join(path.dirname(file), ".restore-failed"))) return;
   storePending = true;
   enqueue(async () => {
     storePending = false;

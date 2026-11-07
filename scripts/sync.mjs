@@ -55,10 +55,15 @@ async function pool(items, n, fn) {
   await Promise.all(Array.from({ length: n }, async () => { while (i < items.length) await fn(items[i++]); }));
 }
 
-await ensureBucket();
 fs.mkdirSync(FILES, { recursive: true });
+// Written when a restore fails, so the server doesn't overwrite the good backup with fresh demo data.
+const FAILED = path.join(DATA, ".restore-failed");
+
+try {
+await ensureBucket();
 
 if (mode === "pull") {
+  fs.rmSync(FAILED, { force: true });
   const store = await get("store.json");
   if (!store) {
     console.log("[sync] Nothing saved yet.");
@@ -82,4 +87,10 @@ if (mode === "pull") {
 } else {
   console.log("Usage: node scripts/sync.mjs pull|push");
   process.exit(1);
+}
+} catch (e) {
+  // Never block the server from starting: if Supabase is down or paused, carry on from the local disk.
+  console.warn(`[sync] ${mode} skipped, Supabase isn't reachable: ${e.message}`);
+  if (mode === "pull") fs.writeFileSync(FAILED, new Date().toISOString());
+  process.exit(0);
 }
