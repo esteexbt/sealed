@@ -60,7 +60,7 @@ Before anything is paid, the client approves the plan (stages, deliverables, pri
 | Payment-gated delivery | Server-side authorization verification (status, `custom_id`, amount, currency); originals served only after capture | `lib/actions.ts` → `completeCheckout`, `app/api/files` |
 | Payment reminders | **Invoicing v2** create + send | `lib/paypal.ts` → `createAndSendInvoice` |
 | Refunds | **Payments v2** capture refund | `lib/paypal.ts` → `refundCapture` |
-| Agentic operations | **PayPal Agent Toolkit** (`@paypal/agent-toolkit/ai-sdk`): `list_invoices`, `get_invoice`, `search_invoicing`, `send_invoice_reminder`, `get_order`, `list_transactions`, `get_merchant_insights` | `lib/agent.ts` |
+| Agentic operations | **PayPal Agent Toolkit** (`@paypal/agent-toolkit/ai-sdk`): `list_invoices`, `get_invoice`, `list_transactions` (kept to three so every question fits Groq's free-tier token limit; reminders go through Sealed's own `send_payment_reminder`, which creates and sends a PayPal invoice) | `lib/agent.ts` |
 
 ## How AI is used
 
