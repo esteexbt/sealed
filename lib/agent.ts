@@ -139,10 +139,10 @@ function paypalTools(): Record<string, Tool> {
     clientSecret: config.paypalSecret,
     configuration: {
       actions: {
-        invoices: { list: true, get: true, search: true, sendReminder: true },
-        orders: { get: true },
+        // Kept small on purpose: every tool's description is sent with each question, and the free
+        // Groq tier allows 8,000 tokens a minute. Reminders go through Sealed's own send_payment_reminder.
+        invoices: { list: true, get: true },
         transactions: { list: true },
-        insights: { get: true },
       },
       context: { sandbox: true },
     },
@@ -179,7 +179,7 @@ export async function runAgent(messages: CoreMessage[], u: User): Promise<AgentR
     result = await generateText({
       model: m,
       system: SYSTEM(u),
-      messages,
+      messages: messages.slice(-10),
       tools: { ...sealedTools(u), ...paypalTools() },
       maxSteps: 8,
       // Don't keep the user waiting on a slow provider: fall back to the rule-based answer instead.

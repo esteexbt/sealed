@@ -27,6 +27,7 @@ export default async function AssistantPage({ searchParams }: { searchParams: Pr
 
   return (
     <Assistant
+      userId={user.id}
       initial={q || ""}
       modelLabel={modelLabel}
       paypalMode={paypalMode}

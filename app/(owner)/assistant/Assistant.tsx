@@ -9,7 +9,8 @@ type Pending = { kind: "remind" | "refund"; projectId: string; milestoneId: stri
 type Msg = { role: "user" | "assistant"; content: string; steps?: Step[]; pending?: Pending; done?: "sent" | "dismissed" };
 type Stat = { label: string; value: string; tone?: "danger" | "held" | "paid" };
 
-const STORE = "sealed-assistant-chat";
+// Each account keeps its own conversation (this browser tab only).
+const storeKey = (userId: string) => `sealed-assistant-chat:${userId}`;
 
 /** Plain names for the tools, so a freelancer (or a judge) can see what the assistant checked. */
 const TOOL_NAMES: Record<string, string> = {
@@ -54,7 +55,7 @@ const SendIcon = () => (
   </svg>
 );
 
-export function Assistant({ initial, modelLabel, paypalMode, firstName, stats, suggestions }: { initial: string; modelLabel: string; paypalMode: string; firstName: string; stats: Stat[]; suggestions: string[] }) {
+export function Assistant({ userId, initial, modelLabel, paypalMode, firstName, stats, suggestions }: { userId: string; initial: string; modelLabel: string; paypalMode: string; firstName: string; stats: Stat[]; suggestions: string[] }) {
   const router = useRouter();
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
@@ -67,17 +68,19 @@ export function Assistant({ initial, modelLabel, paypalMode, firstName, stats, s
   // Keep the conversation while moving around the app (this browser tab only).
   useEffect(() => {
     try {
-      const saved = sessionStorage.getItem(STORE);
+      // Drop chats saved under the old shared key or by another account in this tab.
+      for (const k of Object.keys(sessionStorage)) if (k.startsWith("sealed-assistant-chat") && k !== storeKey(userId)) sessionStorage.removeItem(k);
+      const saved = sessionStorage.getItem(storeKey(userId));
       if (saved && !initial) setMsgs(JSON.parse(saved));
     } catch {}
     loaded.current = true;
-  }, [initial]);
+  }, [initial, userId]);
   useEffect(() => {
     if (!loaded.current) return;
     try {
-      sessionStorage.setItem(STORE, JSON.stringify(msgs.slice(-40)));
+      sessionStorage.setItem(storeKey(userId), JSON.stringify(msgs.slice(-40)));
     } catch {}
-  }, [msgs]);
+  }, [msgs, userId]);
 
   useEffect(() => {
     end.current?.scrollIntoView({ behavior: "smooth", block: "end" });
